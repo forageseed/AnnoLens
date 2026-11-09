@@ -1,6 +1,5 @@
-<p align="center"><img src="docs/logo.png" alt="AnnoLens" width="160"></p>
+<p align="center"><img src="docs/logo.svg" alt="AnnoLens" width="420"></p>
 
-<h1 align="center">AnnoLens</h1>
 
 <p align="center">Review and repair gene models from the evidence, the way a human curator does: an agent plus a skill, served over MCP, for any species</p>
 

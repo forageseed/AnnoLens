@@ -1,6 +1,5 @@
-<p align="center"><img src="docs/logo.png" alt="AnnoLens" width="160"></p>
+<p align="center"><img src="docs/logo.svg" alt="AnnoLens" width="420"></p>
 
-<h1 align="center">AnnoLens</h1>
 
 <p align="center">像人工审阅员一样看证据、修基因模型——智能体 + 技能，以 MCP 服务提供，适用于任何物种</p>
 
