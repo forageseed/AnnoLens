@@ -1,0 +1,56 @@
+# AnnoLens project manifest. Paths are relative to this file unless absolute.
+
+[project]
+name = "my_genome"
+work_dir = "annolens_work"
+
+[genome]
+fasta = "genome.fa"            # must have genome.fa.fai (samtools faidx)
+annotation = "genes.gff3"      # gene / mRNA / exon / CDS
+
+# Any number of short-read RNA-seq samples (sorted, indexed BAM). gtf is optional: StringTie is run when missing.
+[[rna]]
+name = "leaf"
+bam = "rna/leaf.bam"
+gtf = "rna/leaf.stringtie.gtf"
+
+[[rna]]
+name = "root"
+bam = "rna/root.bam"
+
+# Optional full-length transcripts (IsoSeq, ONT cDNA)
+[longread]
+name = "longread"
+bam = "isoseq/flnc.bam"
+gtf = "isoseq/flnc.gtf"
+
+# Protein sets. role: independent | related | paralog
+[[proteins]]
+name = "previous_annotation"
+fasta = "proteins/previous_annotation.pep.fa"
+role = "independent"
+
+[[proteins]]
+name = "relative"
+fasta = "proteins/related_species.pep.fa"
+role = "related"
+
+# Optional genomic long reads (HiFi) for single-position read checks
+[hifi]
+bam = "hifi/hifi.bam"
+
+# Optional repeat annotation (e.g. EDTA TEanno.gff3)
+[repeats]
+gff3 = "repeats/genome.TEanno.gff3"
+
+[tools]
+miniprot = "miniprot"
+stringtie = "stringtie"
+
+# Any OpenAI-compatible or Anthropic-compatible endpoint with image input. The key is read from api_key_env only.
+[model]
+provider = "anthropic"
+base_url = "https://example-provider/api/anthropic"
+model = "your-vision-model"
+api_key_env = "ANNOLENS_API_KEY"
+max_tokens = 1500

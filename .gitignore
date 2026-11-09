@@ -1,0 +1,5 @@
+.sensitive-patterns
+__pycache__/
+*.pyc
+annolens_work/
+*.annolens.bak
