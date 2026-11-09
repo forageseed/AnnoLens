@@ -24,6 +24,13 @@ AnnoLens reviews ONE gene model or ONE locus at a time through the `annolens` MC
 evidence; the server builds candidates only from observed transcripts or intact protein projections, enforces the
 budgets and re-validates every change before it is written. It never edits the genome or the input annotation.
 
+## Setup (when the annolens tools are not available)
+If no `annolens_*` tools are available, AnnoLens is not connected yet. Ask the user where the data are (the ssh host
+of the data machine, or "this machine") and the path of the project manifest `annolens.toml` there, then run
+`npx -y annolens-mcp install --host <codex|claude|cursor|generic> --manifest <path> [--ssh <host>]` and ask the user to
+restart the agent session. Check the connection with `npx -y annolens-mcp doctor --manifest <path> [--ssh <host>]`.
+Plugin installs read the same settings from the environment variables `ANNOLENS_MANIFEST` and `ANNOLENS_SSH`.
+
 ## Tools
 | step | existing gene | locus without a model |
 |---|---|---|

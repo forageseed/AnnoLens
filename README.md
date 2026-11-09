@@ -5,6 +5,18 @@
 
 <p align="center"><b>中文</b> | <a href="README.en.md">English</a></p>
 
+<p align="center">
+<a href="https://www.npmjs.com/package/annolens-mcp"><img alt="npm" src="https://img.shields.io/npm/v/annolens-mcp?style=flat-square&color=cb3837&label=npm"></a>
+<a href="server.json"><img alt="MCP Registry" src="https://img.shields.io/badge/MCP-registry-5c4ee5?style=flat-square"></a>
+<a href="https://skills.sh/forageseed/AnnoLens"><img alt="skills.sh" src="https://skills.sh/b/forageseed/AnnoLens?style=flat-square"></a>
+<a href="npm/package.json"><img alt="Node.js" src="https://img.shields.io/badge/Node.js-%E2%89%A518-339933?style=flat-square&logo=nodedotjs&logoColor=white"></a>
+<a href="pyproject.toml"><img alt="Python" src="https://img.shields.io/badge/Python-%E2%89%A53.11-3776ab?style=flat-square&logo=python&logoColor=white"></a>
+<a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-0e7c86?style=flat-square"></a>
+</p>
+
+<p align="center"><code>npx -y annolens-mcp install --host codex --ssh &lt;server&gt; --manifest &lt;path/annolens.toml&gt;</code></p>
+
+
 ---
 
 ## 简介
@@ -109,6 +121,17 @@ npx -y annolens-mcp install --host generic --ssh <服务器别名> --manifest /p
 - 检查连接：`npx -y annolens-mcp doctor --ssh <服务器别名> --manifest ...`
 - 没有 Node.js 时，可以在服务器上用 `annolens install` 完成同样的操作。
 
+### 安装渠道
+
+| 渠道 | 命令 / 用法 |
+|---|---|
+| npm（推荐） | `npx -y annolens-mcp install --host <codex\|claude\|cursor\|generic> --ssh <服务器> --manifest <路径>` |
+| 在对话里 | 对 agent 说“帮我安装 AnnoLens，数据在 <服务器> 的 <路径>” |
+| skills.sh（只装技能） | `npx skills add forageseed/AnnoLens`；第一次使用时，技能会引导完成 MCP 连接 |
+| Claude Code 插件 | `/plugin marketplace add forageseed/AnnoLens`，再 `/plugin install annolens@annolens`；需设置环境变量 `ANNOLENS_MANIFEST`（可选 `ANNOLENS_SSH`） |
+| Codex 插件 | 仓库中的 `.codex-plugin/`；环境变量同上 |
+| MCP Registry | `io.github.forageseed/annolens`（见 [`server.json`](server.json)） |
+
 <details>
 <summary>工具参考（开发者）</summary>
 
@@ -169,7 +192,9 @@ npx -y annolens-mcp install --host generic --ssh <服务器别名> --manifest /p
 annolens/            Python 包：config、engine、tools、addgene、readcheck、scan、prepare、session、agent、mcp_server、install、render
 annolens/skills/     版本化的技能文本（已有基因 gene_v3.7，含拆分；旧版 gene_v3.5 保留；新增基因 locus_v3.6）
 examples/            项目清单示例
-scripts/             发布前脱敏检查 check_sensitive.py
+scripts/             发布前脱敏检查 check_sensitive.py；技能文件生成与校验 build_skill.py
+skills/annolens/     技能文件（skills.sh、插件使用；由 build_skill.py 生成）
+.claude-plugin/ .codex-plugin/ server.json   Claude Code、Codex 插件清单与 MCP Registry 登记
 npm/                 npm 包 annolens-mcp：MCP 启动器与一步安装器
 ```
 

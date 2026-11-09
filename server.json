@@ -1,0 +1,44 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.forageseed/annolens",
+  "title": "AnnoLens",
+  "description": "Evidence-driven gene-model curation: review, repair, split and add gene models from transcripts, proteins and reads.",
+  "websiteUrl": "https://github.com/forageseed/AnnoLens",
+  "repository": {
+    "url": "https://github.com/forageseed/AnnoLens",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "annolens-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ANNOLENS_MANIFEST",
+          "description": "Path of the project manifest annolens.toml on the machine that holds the data",
+          "isRequired": true,
+          "isSecret": false
+        },
+        {
+          "name": "ANNOLENS_SSH",
+          "description": "ssh host of the data machine (leave empty when the data are local)",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANNOLENS_REMOTE_CMD",
+          "description": "Command that runs the annolens CLI on the data machine (default: annolens)",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

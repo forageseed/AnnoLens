@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "annolens": {
+      "command": "npx",
+      "args": ["-y", "annolens-mcp"]
+    }
+  }
+}

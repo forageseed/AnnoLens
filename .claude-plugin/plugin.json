@@ -1,0 +1,20 @@
+{
+  "name": "annolens",
+  "version": "0.1.0",
+  "description": "Evidence-driven gene-model curation: review, repair, split and add gene models from transcripts, proteins and reads.",
+  "author": {
+    "name": "forageseed",
+    "url": "https://github.com/forageseed"
+  },
+  "homepage": "https://github.com/forageseed/AnnoLens",
+  "repository": "https://github.com/forageseed/AnnoLens",
+  "license": "Apache-2.0",
+  "keywords": ["genome-annotation", "gene-model", "bioinformatics", "mcp-server"],
+  "skills": "./skills",
+  "mcpServers": {
+    "annolens": {
+      "command": "npx",
+      "args": ["-y", "annolens-mcp"]
+    }
+  }
+}

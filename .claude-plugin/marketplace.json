@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "annolens",
+  "description": "Evidence-driven gene-model curation for any genome.",
+  "owner": {
+    "name": "forageseed",
+    "url": "https://github.com/forageseed"
+  },
+  "plugins": [
+    {
+      "name": "annolens",
+      "description": "Review, repair, split and add gene models from transcripts, proteins and reads; rules enforced by the engine.",
+      "source": "./",
+      "category": "science"
+    }
+  ]
+}
