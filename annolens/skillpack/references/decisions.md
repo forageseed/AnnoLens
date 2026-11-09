@@ -35,6 +35,8 @@ final decision as the server returns it.
     anchored by an independent or related-species projection;
   - the dominant ORF across samples.
 - Fix only what is broken: a complete model that already passes a gate is replaced only with a truncation proof.
-  A truncation proof means an intact protein anchors the candidate, the original is < 90 % of that protein, and every
-  candidate intron is supported.
+  A truncation proof means an intact protein of about the candidate's length (0.9-1.1x) exists, the original is
+  < 90 % of that protein, and every candidate intron is supported; the candidate's start and stop are anchored either
+  by a projection or, since skill 3.8, by being the dominant ORF in five or more samples (such an ORF may also be
+  measured against a protein that projects here with a frameshift or stop, since the genome evidently encodes the ORF).
 - Anti-truncation: a candidate shorter than the dominant ORF and supported by fewer samples is refused.

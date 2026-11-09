@@ -13,7 +13,7 @@ from . import genome as G
 from .render import render
 
 SKILLS = Path(__file__).with_name('skills')
-SKILL = {'gene': (SKILLS / 'gene_v3.7.txt', '3.7'), 'locus': (SKILLS / 'locus_v3.6.txt', '3.6')}
+SKILL = {'gene': (SKILLS / 'gene_v3.8.txt', '3.8'), 'locus': (SKILLS / 'locus_v3.6.txt', '3.6')}
 BUDGET = {'gene': {'views': 4, 'builds': 3, 'readchecks': 3}, 'locus': {'views': 4, 'builds': 3, 'readchecks': 3}}
 GENE_STATUSES = {'retain', 'recommend_candidate', 'split', 'unresolved', 'assembly_conflict', 'genome_frameshift'}
 SPLIT_IN_SPAN, SPLIT_LEN_RATIO, FS_LONGER = 0.5, (0.8, 1.2), 1.1

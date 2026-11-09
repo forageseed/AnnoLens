@@ -212,7 +212,7 @@ commands/annolens-queue.md    /annolens-queue <队列> [数量]
 
 ```
 annolens/            Python 包：config、engine、tools、addgene、readcheck、scan、prepare、session、agent、mcp_server、install、render
-annolens/skills/     版本化的技能文本（已有基因 gene_v3.7，含拆分；旧版 gene_v3.5 保留；新增基因 locus_v3.6）
+annolens/skills/     版本化的技能文本（已有基因 gene_v3.8，含拆分；旧版 gene_v3.7、gene_v3.5 保留；新增基因 locus_v3.6）
 examples/            项目清单示例
 scripts/             发布前脱敏检查 check_sensitive.py；技能文件生成与校验 build_skill.py
 skills/annolens/     技能文件（skills.sh、插件使用；由 build_skill.py 生成）

@@ -14,7 +14,9 @@ version that introduced each rule):
                  related-species projection (0.9-1.1 x protein) [v4, 3.4]; cross-sample dominant ORF [v5]
   fix only what is broken: a complete original that already passes a gate is not replaced [v4], except with a
                  truncation proof: an intact independent or related protein anchors the candidate's start, stop and
-                 length, the original is < 90 % of it and every candidate intron is supported [3.7]
+                 length, the original is < 90 % of it and every candidate intron is supported [3.7]; the start/stop
+                 anchoring may instead come from a cross-tissue dominant ORF observed in >= 5 samples, which then also
+                 accepts a length anchor that projects with a frameshift or stop [3.8]
   anti-truncation: no candidate shorter than a strong dominant ORF with fewer sources [v5]; a dominant ORF never
                  shortens a complete original [v5]; ambiguous coverage vote -> no dominant ORF [3.3]
 The genome and the input annotation are never edited; outputs are proposals.
@@ -31,6 +33,7 @@ LOCUS_FLANK, MAX_LOCUS_EXTENSION, CONFLICT_BP = 10000, 100000, 30
 DOM_MIN_SOURCES, TIE_COVERAGE_RATIO, COVERAGE_OVERRIDE_RATIO = 3, 1.1, 2.0
 ANCHOR_KINDS = ('pot', 'ind')
 IND_COV, TRUNC = 0.9, 0.9
+DOM_PROOF_SOURCES = 5   # [3.8] samples needed before a dominant ORF can stand in for start/stop anchoring
 GATE_ERRORS = {'no_exact_full_chain_longread_support', 'intron_without_RNA_or_homology_support', 'no_anchoring_projection',
                'start_not_supported_by_projection', 'stop_not_supported_by_projection', 'length_outside_projection_range',
                'single_exon_coding_support_insufficient'}
@@ -341,7 +344,7 @@ class GeneEngine:
             strong = (dom is not None and dom.get('adoptable', True) and cds == dom['cds']) or bool(c['evidence'].get('full_length_chain_observed'))
             if not strong: problems.append('merge_requires_dominant_ORF_or_full_chain_longread')
             errors += sorted(set(problems))
-        # [3.7] truncation proof: the "original is already supported" and merge-strength rules are lifted only when an
+        # [3.7/3.8] truncation proof: the "original is already supported" and merge-strength rules are lifted only when an
         # intact protein (independent or related, no frameshift/stop, >= 90 % coverage) anchors the candidate's start,
         # stop and length (0.9-1.1 x), the original is < 90 % of that protein, and every candidate intron is supported.
         if errors and set(errors) <= LIFTABLE:
@@ -354,16 +357,30 @@ class GeneEngine:
                 'genome_unchanged': True}
 
     def truncation_proof(self, gene, m, exons, cds):
-        gerr, det = self.rna_homology_gate(gene, m, exons, cds)
-        if gerr: return None                      # unsupported intron, or start/stop/length not anchored
+        gerr, det = self.rna_homology_gate(gene, m, exons, cds); kind = 'projection_anchored'
+        if gerr:
+            # [3.8] start/stop/length not anchored by a projection: accept the cross-tissue dominant ORF instead, but
+            # only when it is adoptable, seen in >= DOM_PROOF_SOURCES samples and every intron is still supported
+            if set(gerr) - ANCHOR_ERRORS or not self._strong_dominant(gene, cds): return None
+            kind = 'dominant_orf'
+        # [3.8] a complete ORF observed in >= DOM_PROOF_SOURCES samples is itself proof that this genome encodes it, so
+        # the length anchor may be a protein that projects here with a frameshift or stop (the genome differs from it)
+        strong = kind == 'dominant_orf' or self._strong_dominant(gene, cds)
         orig_aa, aa = G.aa_len(m['cds']), G.aa_len(cds)
         for al in self.homology.get(gene, []):
-            if al['kind'] not in ANCHOR_KINDS or al['strand'] != m['strand'] or al['frameshift'] or al['stop_codon_found'] or not al['protein_length']: continue
+            if al['kind'] not in ANCHOR_KINDS or al['strand'] != m['strand'] or not al['protein_length']: continue
+            broken = bool(al['frameshift'] or al['stop_codon_found'])
+            if broken and not strong: continue
             L = al['protein_length']
             if al['target_end_aa'] - al['target_start_aa'] + 1 < IND_COV * L: continue
             if LENGTH_RATIO[0] <= aa / L <= LENGTH_RATIO[1] and orig_aa < TRUNC * L:
-                return {**det, 'proof_protein': al['protein'], 'proof_protein_length': L, 'original_aa': orig_aa, 'candidate_aa': aa}
+                return {**det, 'proof_kind': 'dominant_orf' if broken else kind, 'proof_protein': al['protein'], 'proof_protein_length': L,
+                        'original_aa': orig_aa, 'candidate_aa': aa}
         return None
+
+    def _strong_dominant(self, gene, cds):
+        dom = self.cross_tissue_orfs(gene)['dominant']
+        return dom is not None and dom.get('adoptable', True) and dom['cds'] == cds and len(dom['sources']) >= DOM_PROOF_SOURCES
 
     def materialize_proposal(self, gene, candidate_id):
         c = self.candidate(gene, candidate_id); v = self.validate_annotation_edit(gene, candidate_id)

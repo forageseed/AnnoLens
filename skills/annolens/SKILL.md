@@ -1,9 +1,9 @@
 ---
 name: annolens
-description: Curate protein-coding gene models from evidence with the AnnoLens MCP tools (AnnoLens 0.1.0). Use it to review a suspicious gene model (truncated, split, fused, missing start or stop, frameshift), to check whether a gene is missing at a locus, or to work through an AnnoLens review queue.
+description: Curate protein-coding gene models from evidence with the AnnoLens MCP tools (AnnoLens 1.1.0). Use it to review a suspicious gene model (truncated, split, fused, missing start or stop, frameshift), to check whether a gene is missing at a locus, or to work through an AnnoLens review queue.
 ---
 
-# AnnoLens 0.1.0
+# AnnoLens 1.1.0
 
 AnnoLens reviews ONE gene model or ONE locus at a time through the `annolens` MCP server. You reason over evidence
 images and tables; the server builds candidates only from observed transcripts or intact protein projections, enforces
@@ -13,7 +13,7 @@ the budgets and re-validates every change before it is written. It never edits t
 If no `annolens_*` tools are available, AnnoLens is not connected yet: follow `references/setup.md`.
 
 ## Workflow
-1. Existing gene model: open with `annolens_open_gene(gene_id)` and follow `references/gene-policy.md` (skill v3.7).
+1. Existing gene model: open with `annolens_open_gene(gene_id)` and follow `references/gene-policy.md` (skill v3.8).
 2. Locus without a model (possible missing gene): open with `annolens_open_locus(locus_id)` and follow
    `references/locus-policy.md` (skill v3.6).
 3. Several genes or a whole queue: `annolens_list_queue(name)`, then one session per id; for hundreds of ids suggest the
