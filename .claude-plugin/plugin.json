@@ -9,12 +9,22 @@
   "homepage": "https://github.com/forageseed/AnnoLens",
   "repository": "https://github.com/forageseed/AnnoLens",
   "license": "Apache-2.0",
-  "keywords": ["genome-annotation", "gene-model", "bioinformatics", "mcp-server"],
+  "keywords": [
+    "genome-annotation",
+    "gene-model",
+    "bioinformatics",
+    "mcp-server"
+  ],
   "skills": "./skills",
   "mcpServers": {
     "annolens": {
       "command": "npx",
-      "args": ["-y", "annolens-mcp"]
+      "args": [
+        "-y",
+        "annolens-mcp"
+      ]
     }
-  }
+  },
+  "agents": "./agents",
+  "commands": "./commands"
 }

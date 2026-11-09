@@ -132,6 +132,28 @@ npx -y annolens-mcp install --host generic --ssh <服务器别名> --manifest /p
 | Codex 插件 | 仓库中的 `.codex-plugin/`；环境变量同上 |
 | MCP Registry | `io.github.forageseed/annolens`（见 [`server.json`](server.json)） |
 
+### 技能包里有什么
+
+安装后，宿主里得到的是一个完整的技能目录，另外还有子 agent 和斜杠命令（Claude Code 插件）：
+
+```
+skills/annolens/
+  SKILL.md                    什么时候用、怎么连接、工作流程
+  references/gene-policy.md   已有基因的审阅策略（含拆分）
+  references/locus-policy.md  缺失位点的新增基因策略
+  references/decisions.md     各类结论的含义和机器规则
+  references/tools.md         MCP 工具参考
+  references/setup.md         安装与连接
+  scripts/check_gff.py        不依赖 MCP 的确定性检查（任意 GFF3 + FASTA）
+agents/annolens-curator.md    子 agent：审一个基因或位点
+agents/annolens-batch.md      子 agent：审一个队列并汇总
+commands/annolens-review.md   /annolens-review <基因>
+commands/annolens-addgene.md  /annolens-addgene <位点>
+commands/annolens-queue.md    /annolens-queue <队列> [数量]
+```
+
+技能目录由 `annolens skill-files` 从同一份版本化文本生成；仓库里的副本用 `python scripts/build_skill.py --check` 校验，保证与服务端规则一致。
+
 <details>
 <summary>工具参考（开发者）</summary>
 

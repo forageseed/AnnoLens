@@ -18,4 +18,4 @@ annolens = "annolens.cli:main"
 packages = ["annolens"]
 
 [tool.setuptools.package-data]
-annolens = ["skills/*.txt"]
+annolens = ["skills/*.txt", "skillpack/**/*"]

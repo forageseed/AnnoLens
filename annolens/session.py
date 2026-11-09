@@ -66,6 +66,7 @@ class _Session:
     def __init__(self, ws, key):
         self.ws, self.key = ws, key; self.used = {k: 0 for k in BUDGET[self.mode]}; self.n_img = 0
         self.builds, self.readchecks, self.trace, self.closed = {}, [], [], False
+        self.t0 = time.time()   # wall time from opening the session to the written decision
 
     def _budget(self, k):
         if self.closed: raise ValueError('session already decided')
@@ -84,7 +85,7 @@ class _Session:
 
     def _write(self, rec):
         p = self.ws.out / self.mode / 'reviews' / f"{self.key.replace(':', '_')}.json"; p.parent.mkdir(parents=True, exist_ok=True)
-        rec.update(trace=self.trace, budgets_used=self.used, skill_version=SKILL[self.mode][1],
+        rec.update(trace=self.trace, budgets_used=self.used, skill_version=SKILL[self.mode][1], elapsed_s=round(time.time() - self.t0, 1),
                    policy_sha256=hashlib.sha256(skill_text(self.mode).encode()).hexdigest(), written=time.strftime('%Y-%m-%d %H:%M:%S'),
                    genome_edits=[], input_annotation_modified=False)
         p.write_text(json.dumps(rec, indent=1)); self.closed = True; return str(p)

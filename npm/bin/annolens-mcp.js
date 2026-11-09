@@ -69,21 +69,29 @@ function write(file, text, dry) {
   fs.writeFileSync(file, text); console.log('wrote', file);
 }
 
-function skillMd(a) {
-  const [cmd, args] = target(a, ['skill-md']);
-  const r = spawnSync(cmd, args, { encoding: 'utf8' });
+// the whole skill folder ({relative path: text}) from the annolens installed with the data; falls back to SKILL.md only
+function skillFiles(a) {
+  let [cmd, args] = target(a, ['skill-files']);
+  let r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 << 20 });
+  if (r.status === 0) { try { const f = JSON.parse(r.stdout); if (f['SKILL.md']) return f; } catch (e) { /* older server */ } }
+  [cmd, args] = target(a, ['skill-md']);
+  r = spawnSync(cmd, args, { encoding: 'utf8' });
   if (r.status !== 0 || !r.stdout.includes('name: annolens')) {
     console.error('annolens-mcp: could not read the skill from the server side (is `annolens` installed there? try `doctor`)');
     console.error(r.stderr || r.error || ''); process.exit(1);
   }
-  return r.stdout;
+  return { 'SKILL.md': r.stdout };
+}
+
+function writeSkill(dir, files, dry) {
+  for (const [rel, text] of Object.entries(files)) write(path.join(dir, ...rel.split('/')), text, dry);
 }
 
 function install(a) {
   need(a);
   const host = a.host;
   if (!['codex', 'claude', 'cursor', 'generic'].includes(host)) { console.error('annolens-mcp: --host must be codex, claude, cursor or generic'); process.exit(2); }
-  const md = skillMd(a); const home = os.homedir();
+  const files = skillFiles(a); const home = os.homedir();
   // Windows hosts cannot spawn npx directly (it is a .cmd shim): go through cmd /c
   const entry = process.platform === 'win32' ? { command: 'cmd', args: ['/c', 'npx', ...launcherArgs(a)] } : { command: 'npx', args: launcherArgs(a) };
   if (host === 'codex') {
@@ -92,7 +100,7 @@ function install(a) {
     old = old.replace(/^\[mcp_servers\.annolens\]\n(?:(?!\[).*(?:\n|$))*/m, '').trimEnd() + '\n';
     const block = `\n[mcp_servers.annolens]\ncommand = ${JSON.stringify(entry.command)}\nargs = ${JSON.stringify(entry.args)}\nstartup_timeout_sec = 300\ntool_timeout_sec = 900\n`;
     write(cfg, old + block, a.dryRun);
-    write(path.join(a.skillsDir || path.join(home, '.codex', 'skills'), 'annolens', 'SKILL.md'), md, a.dryRun);
+    writeSkill(path.join(a.skillsDir || path.join(home, '.codex', 'skills'), 'annolens'), files, a.dryRun);
   } else if (host === 'claude') {
     const reg = ['mcp', 'add', '--scope', 'user', 'annolens', '--', entry.command, ...entry.args];
     console.log((a.dryRun ? '[dry-run] ' : '') + 'claude ' + reg.join(' '));
@@ -100,16 +108,16 @@ function install(a) {
       const r = spawnSync('claude', reg, { stdio: 'inherit', shell: process.platform === 'win32' });
       if (r.status !== 0) { console.error('annolens-mcp: `claude mcp add` failed; is Claude Code installed?'); process.exit(1); }
     }
-    write(path.join(a.skillsDir || path.join(home, '.claude', 'skills'), 'annolens', 'SKILL.md'), md, a.dryRun);
+    writeSkill(path.join(a.skillsDir || path.join(home, '.claude', 'skills'), 'annolens'), files, a.dryRun);
   } else if (host === 'cursor') {
     const cfg = path.join(home, '.cursor', 'mcp.json');
     const j = fs.existsSync(cfg) ? JSON.parse(fs.readFileSync(cfg, 'utf8') || '{}') : {};
     j.mcpServers = j.mcpServers || {}; j.mcpServers.annolens = entry;
     write(cfg, JSON.stringify(j, null, 2) + '\n', a.dryRun);
-    write(path.join(a.skillsDir || path.join(process.cwd(), 'annolens-skill'), 'SKILL.md'), md, a.dryRun);
+    writeSkill(a.skillsDir || path.join(process.cwd(), 'annolens-skill'), files, a.dryRun);
   } else {
     console.log(JSON.stringify({ mcpServers: { annolens: entry } }, null, 2));
-    write(path.join(a.skillsDir || path.join(process.cwd(), 'annolens-skill'), 'SKILL.md'), md, a.dryRun);
+    writeSkill(a.skillsDir || path.join(process.cwd(), 'annolens-skill'), files, a.dryRun);
   }
   console.log(`done: MCP server "annolens" registered for ${host} and skill installed`);
 }
