@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "annolens": {
+      "command": "annolens",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

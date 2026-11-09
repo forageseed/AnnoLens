@@ -4,7 +4,8 @@ tools      gene sessions (existing models) and locus sessions (missing genes); b
            enforced in annolens.session, never by the host model
 prompts    annolens_review_gene, annolens_add_gene (versioned skill text + tool mapping)
 resources  annolens://skill/gene, annolens://skill/locus, annolens://server/info
-Run: annolens mcp --manifest annolens.toml [--out DIR]
+Run: annolens mcp [--manifest annolens.toml] [--out DIR]   (else ANNOLENS_MANIFEST, else ./annolens.toml; without a
+           project the server still starts and every tool says how to set one)
 """
 import base64, csv, json, sys, traceback, uuid
 from pathlib import Path
@@ -14,6 +15,9 @@ from .session import BUDGET, GENE_STATUSES, LOCUS_STATUSES, GeneSession, LocusSe
 
 PROTOCOL = '2025-06-18'
 STATE = {'sessions': {}}
+NO_PROJECT = ('No AnnoLens project is set. Point the server at a manifest: set ANNOLENS_MANIFEST=/path/annolens.toml in the '
+              'MCP config (annolens install --host <host> --manifest /path/annolens.toml) or start it in the directory that '
+              'holds annolens.toml, then reconnect. `annolens check` shows what is missing.')
 
 MAP = {'gene': ('In this MCP session the actions are tools: open = annolens_open_gene(gene_id); view = annolens_gene_view(session,start,end); '
                 'orfs = annolens_gene_orfs(session,transcript); build = annolens_gene_build(session,transcript[,start][,merge]); '
@@ -111,7 +115,7 @@ PROMPTS = {'annolens_review_gene': ('Review one existing gene model with AnnoLen
 def resources():
     return {'annolens://skill/gene': ('AnnoLens skill for existing gene models', lambda: skill_text('gene')),
             'annolens://skill/locus': ('AnnoLens skill for loci without a model (add gene)', lambda: skill_text('locus')),
-            'annolens://server/info': ('Server summary', lambda: json.dumps({'version': __version__, 'project': STATE['M'].name, 'budgets': BUDGET}, indent=1))}
+            'annolens://server/info': ('Server summary', lambda: json.dumps({'version': __version__, 'project': STATE['M'].name if STATE.get('M') else None, 'budgets': BUDGET}, indent=1))}
 
 
 def handle(msg):
@@ -126,6 +130,8 @@ def handle(msg):
     if m == 'tools/call':
         name, args = p.get('name'), p.get('arguments') or {}
         if name not in FN: raise KeyError(f'unknown tool {name}')
+        if STATE.get('M') is None:
+            return {'content': [{'type': 'text', 'text': NO_PROJECT}], 'isError': True}
         try: return {'content': FN[name](args), 'isError': False}
         except Exception as ex:
             traceback.print_exc(file=sys.stderr); return {'content': [{'type': 'text', 'text': f'TOOL ERROR {type(ex).__name__}: {ex}'}], 'isError': True}
@@ -142,7 +148,7 @@ def handle(msg):
 
 def serve(manifest, out):
     out_stream = sys.stdout; sys.stdout = sys.stderr      # library output never reaches the JSON-RPC channel
-    STATE.update(M=manifest, ws=Workspace(manifest, out))
+    STATE.update(M=manifest, ws=Workspace(manifest, out) if manifest else None)
     for line in sys.stdin:
         line = line.strip()
         if not line: continue

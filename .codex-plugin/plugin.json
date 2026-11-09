@@ -9,15 +9,28 @@
   "homepage": "https://github.com/forageseed/AnnoLens",
   "repository": "https://github.com/forageseed/AnnoLens",
   "license": "Apache-2.0",
-  "keywords": ["genome-annotation", "gene-model", "bioinformatics", "mcp-server"],
+  "keywords": [
+    "genome-annotation",
+    "gene-model",
+    "bioinformatics",
+    "mcp-server"
+  ],
   "skills": "./skills",
-  "mcpServers": "./.codex-plugin/mcp.json",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "AnnoLens",
     "shortDescription": "Curate gene models from evidence",
     "longDescription": "An agent reviews evidence images and read checks, then repairs truncated, split or fused gene models and adds missing genes; every change is validated by the engine.",
     "developerName": "forageseed",
     "category": "Science",
-    "capabilities": ["Interactive", "Read"]
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Check whether this gene model is right",
+      "Is a gene missing at this locus?",
+      "Review the first 20 genes of the queue and summarise"
+    ]
   }
 }

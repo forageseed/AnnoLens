@@ -1,145 +1,195 @@
-<p align="center"><img src="docs/logo.svg" alt="AnnoLens" width="420"></p>
+<div align="center">
+  <img src="docs/logo.svg" alt="AnnoLens" width="360" />
 
+  <p>
+  <a href="pyproject.toml"><img alt="Python" src="https://img.shields.io/badge/Python-%E2%89%A53.11-3776ab?style=flat-square&logo=python&logoColor=white" /></a>
+  <a href="https://www.npmjs.com/package/annolens-mcp"><img alt="npm" src="https://img.shields.io/npm/v/annolens-mcp?style=flat-square&color=cb3837&label=npm" /></a>
+  <a href="server.json"><img alt="MCP" src="https://img.shields.io/badge/MCP-server-5c4ee5?style=flat-square" /></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-0e7c86?style=flat-square" /></a>
+  </p>
 
-<p align="center">Review and repair gene models from the evidence, the way a human curator does: an agent plus a skill, served over MCP, for any species</p>
+  No code and no commands to remember. Give an agent a gene ID or a genome position; it checks the evidence and fixes the gene model the way a human curator does.
 
-<p align="center"><a href="README.md">中文</a> | <b>English</b></p>
+  <a href="README.md">中文</a> | <b>English</b>
+</div>
 
 <p align="center">
-<a href="https://www.npmjs.com/package/annolens-mcp"><img alt="npm" src="https://img.shields.io/npm/v/annolens-mcp?style=flat-square&color=cb3837&label=npm"></a>
-<a href="server.json"><img alt="MCP Registry" src="https://img.shields.io/badge/MCP-registry-5c4ee5?style=flat-square"></a>
-<a href="https://skills.sh/forageseed/AnnoLens"><img alt="skills.sh" src="https://skills.sh/b/forageseed/AnnoLens?style=flat-square"></a>
-<a href="npm/package.json"><img alt="Node.js" src="https://img.shields.io/badge/Node.js-%E2%89%A518-339933?style=flat-square&logo=nodedotjs&logoColor=white"></a>
-<a href="pyproject.toml"><img alt="Python" src="https://img.shields.io/badge/Python-%E2%89%A53.11-3776ab?style=flat-square&logo=python&logoColor=white"></a>
-<a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-0e7c86?style=flat-square"></a>
+  <a href="#what-it-is">What it is</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#what-you-get">What you get</a> ·
+  <a href="#compared-with-manual-curation">Compared with manual curation</a> ·
+  <a href="#limits">Limits</a> ·
+  <a href="#reference">Reference</a>
 </p>
-
-<p align="center"><code>npx -y annolens-mcp install --host codex --ssh &lt;server&gt; --manifest &lt;path/annolens.toml&gt;</code></p>
-
-
----
 
 ## What it is
 
-Automatic annotation pipelines such as EVM, BRAKER and MAKER always leave some models wrong. Some are truncated, some are split in two, some fuse two genes, some lack a start or stop codon, some have no UTRs, and some genes are missing entirely. Human curators fix these one by one in a genome browser, checking transcripts, homologous proteins and splice reads. AnnoLens gives this job to a vision-capable language model and keeps it from making arbitrary changes:
+**AnnoLens is a gene-model review and repair tool for AI agents.** Automatic annotation pipelines (EVM, BRAKER, MAKER and others) always leave some models wrong: truncated, split in two, two genes fused into one, missing a start or stop codon, without UTRs; some genes are not annotated at all. Curators fix them one by one in a genome browser such as GSAman, comparing transcripts, protein alignments and spliced reads, which takes a lot of time and expertise. AnnoLens hands this work to a vision-capable model and keeps it from making unsupported changes:
 
-- **The agent judges evidence images.** Each gene or locus gets an image and a text table. The image shows the current model, observed transcripts per sample, homologous protein projections onto the genome, and splice-junction reads.
-- **A versioned skill defines how to review.** It covers how to settle gene extent before structure, which evidence counts, and when to retain, change, add a gene or leave it unresolved.
-- **An engine enforces the hard rules.** A candidate can only come from an observed transcript or an intact protein projection; the model never types coordinates. The engine checks every candidate, and the model has no say over these rules:
-  - complete ORF and canonical splice sites
-  - no conflict with neighbouring genes
-  - every intron supported by reads or by a projection
-  - length consistent with homologs
-  - no shortening below the ORF that most samples agree on
-- **It proposes and never edits.** Outputs are review records and candidate GFF3 files. The input annotation and the genome are never modified.
+- **Evidence images**: for each gene or locus, one image (current model, transcripts per sample, protein projections, spliced reads) and a text evidence table.
+- **A versioned skill decides how to review**: first the gene's extent, then its structure; when to keep, change, split, add or leave a model unresolved.
+- **An engine enforces the hard rules**: candidates come only from observed transcripts or intact protein projections, and the model never writes coordinates. Complete ORF, canonical splice sites, no conflict with neighbours and evidence support are checked by the engine.
+- **Proposals only**: review records and candidate GFF3; the genome and the input annotation are never edited.
 
-## Features
+It comes as an agent plugin (skill + MCP server) and a CLI, and runs entirely on your own machine.
 
-| Feature | Details |
-|---|---|
-| Genome-wide rule scan | `annolens scan` checks every gene and adds the problem genes to prioritised queues. It covers:<br>• coding integrity and UTRs<br>• overlaps between genes<br>• evidence support<br>• length against an independent annotation, splits and fusions<br>• read-supported frameshifts<br>• repeat overlap<br>It also finds loci that have no gene model. |
-| Repair existing models | Extend truncated models, merge split ones, complete missing start/stop codons, take UTRs from observed transcripts |
-| Split fused models | When one model joins two or more genes, the agent builds each gene and each is validated like a new gene; a model that is supported as one gene is never split |
-| Add missing genes | Build a new gene from transcripts or an intact projection at loci that have no model |
-| Read checks | At any position, count genomic long reads (e.g. HiFi) and RNA reads that agree or disagree with the assembly, to separate assembly errors from real frameshifts and stops |
-| Rule-based UTRs | Add UTRs in bulk from transcripts whose intron chain matches the model, with conflict checks against neighbouring genes |
-| Batch review | Review thousands of genes in parallel with any vision model behind an OpenAI- or Anthropic-compatible API |
-| Conversational use | Ask in plain words inside Codex, Claude Code, WorkBuddy, Cursor or any MCP host |
+### Who it is for
 
-## Install
+- Groups that have just annotated a genome and need to check and correct the gene models.
+- Anyone who wants to cut the manual curation work in GSAman, Apollo or IGV.
+- Researchers who want to ask "is this gene right?" directly in Codex, Claude Code, Cursor or another agent.
 
-On the machine that holds the data:
+For structural annotation from scratch use an annotation pipeline such as BRAKER or MAKER; AnnoLens reviews and repairs an existing annotation.
 
-```bash
-pip install git+https://github.com/forageseed/AnnoLens.git
-# external tools: miniprot (projections); StringTie when you supply BAMs without GTFs
+## What it does
+
+| Task | Example input | Result |
+|---|---|---|
+| **Review one gene** | "Is this gene model right? gene_123" | Decision (keep / change / split / frameshift / unresolved), evidence image, candidate GFF3 when changed |
+| **Find missing genes** | "Is a gene missing at chr3:1,204,000-1,212,000?" | A new gene, or "not a coding gene" |
+| **Merge and split** | "Were these two neighbouring genes originally one?" | A validated merged model, or several separate genes |
+| **Assembly error or real frameshift** | "Is the frameshift here an assembly error?" | HiFi and RNA read counts and a conclusion |
+| **Genome-wide check** | The whole annotation | Rule checks of every gene (coding completeness, UTRs, overlaps, truncation, fusion and more), ranked into review queues |
+| **Batch review** | A queue name or a gene list | One record per gene and a summary; works with any vision-capable model behind an OpenAI- or Anthropic-compatible API |
+
+## Getting started
+
+### Agent plugin
+
+Send this sentence to Codex, Claude Code, Cursor, WorkBuddy or another agent:
+
+```text
+Install or update this plugin for me: https://github.com/forageseed/AnnoLens
 ```
 
-## Quick start
-
-1. Copy [`examples/annolens.toml`](examples/annolens.toml) and fill in the genome, annotation, RNA alignments and protein sets. The long reads, HiFi, repeat annotation and model endpoint fields are optional.
-2. Build the work directory and run the genome-wide scan:
+The agent follows [AGENTS.md](AGENTS.md): it installs the Python package, registers the MCP server and installs the skill. Then check the machine:
 
 ```bash
-annolens prepare --manifest annolens.toml --threads 16
-annolens scan    --manifest annolens.toml
+annolens check
 ```
 
-3. Run the batch reviews. The API key is read from an environment variable only:
+and describe the task in plain words, for example:
+
+```text
+Is this gene model right? gene_123
+```
+
+```text
+Review the first 20 genes of the queue and summarise.
+```
+
+### CLI / MCP
+
+Python 3.11 or newer on Linux, macOS or WSL on Windows. Install and set up a project:
 
 ```bash
-export ANNOLENS_API_KEY=...        # the variable named by api_key_env in the manifest
+python -m pip install git+https://github.com/forageseed/AnnoLens.git
+annolens check
+annolens prepare --manifest annolens.toml --threads 16    # work dir: junctions, protein projections, read sites
+annolens scan    --manifest annolens.toml                 # genome-wide rule check, builds the review queues
+```
+
+Copy the manifest from [`examples/annolens.toml`](examples/annolens.toml): genome, annotation, RNA alignments, protein sets, and optionally long-read transcripts, HiFi reads, a repeat annotation and a model API. Protein projections need miniprot; samples with a BAM but no GTF also need StringTie.
+
+An MCP client needs one command (standard configuration in [`.mcp.json`](.mcp.json)):
+
+```json
+{ "mcpServers": { "annolens": { "command": "annolens", "args": ["mcp"] } } }
+```
+
+The project comes from the environment variable `ANNOLENS_MANIFEST`, or `annolens.toml` in the directory the server starts in. To register and install the skill in one step: `annolens install --host codex|claude|cursor|generic --manifest annolens.toml`.
+
+Batch review outside a chat (API keys are read from environment variables only):
+
+```bash
 annolens review  --manifest annolens.toml --queue P1 --workers 4
 annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 ```
 
-Results go to `<work_dir>/reviews/`: one review record (JSON) per gene. Validated changes and new genes are also written as GFF3.
+## What you get
 
-### Protein roles
+- **Decisions:** one review record (JSON) per gene or locus with decision, confidence, rationale and evidence gaps.
+- **Candidate models:** changed, split and added genes as GFF3 (with UTRs), each validated by the engine.
+- **Evidence images:** attached in the chat for manual checking.
+- **Read checks:** HiFi and RNA read counts at any position, separating assembly errors from real frameshifts or stops.
+- **Queues and summaries:** ranked queues from the genome-wide check, decision counts from batch review.
 
-| role | meaning | used for |
+## Compared with manual curation
+
+Twenty loci from one genome, covering nine kinds of problem: truncation, extension, merge, split, shortening, non-canonical splicing, genome frameshift, missing gene and controls. AnnoLens (skill v3.8, GLM model) reviewed them automatically. GSAman was operated through its GUI by an agent that could not see the AnnoLens results; this is not an experienced human curator, who may be faster. The reference is an independent annotation of the same species, not ground truth.
+
+| Measure | AnnoLens | GSAman |
 |---|---|---|
-| `independent` | another annotation of the same species, made independently | anchoring start, stop and length; main reference for truncation |
-| `related` | proteome of a related species | anchoring start, stop and length |
-| `paralog` | proteins from the same pipeline as the reviewed annotation (e.g. homeologs) | supporting introns only |
+| CDS base overlap with the independent annotation (Jaccard, mean; original 0.538) | **0.735** | 0.641 |
+| Loci closer to the independent annotation (10 tied) | **8** | 2 |
+| Total time | **15.0 min** | 57.3 min |
+| Time per locus (median) | **26 s** | 180 s |
 
-Do not mark a proteome that was used as evidence for the reviewed annotation as `independent`: it repeats the same truncations.
+By problem type:
+- Extending truncated models, merging neighbours and adding genes mostly gave identical models.
+- Splitting fused genes (2 loci), merges that depend on the reading frame, and a minus-strand new gene were beyond GSAman's longest-ORF prediction. AnnoLens matched the independent annotation in all of them.
+- At 1 locus GSAman extended further, because the AnnoLens evidence gate did not pass that candidate.
+- At 1 locus GSAman deleted a neighbouring gene by mistake.
+- Both kept the original model at the non-canonical splice and genome frameshift loci.
 
-## Use it in conversation (Codex, Claude Code, WorkBuddy, ...)
+The acceptance rule found in this comparison is part of skill v3.8: a complete ORF that several samples agree on can prove that the original model is truncated.
 
-In any MCP host you **just talk** and ask in plain words. The host model calls AnnoLens on its own: it looks at the evidence, builds candidates and checks reads, then answers with a decision and the evidence images. You do not need to know any commands or tool names.
+## Limits
 
-> **You**: Is this gene model right? gene_123
->
-> **Assistant**: The current model is 199 aa and only covers the 3′ part of the gene. Transcripts from 7 samples and the independent protein support a 646 aa structure, but the end of exon 1 carries a 1-bp frameshift. 26 HiFi reads and 170 RNA reads confirm that this is the real sequence of this genome. Decision: genome_frameshift; the model is kept and flagged. (evidence images attached)
+- Linux, macOS or WSL: the engine reads BAM files with pysam, which has no native Windows build.
+- The host model must read images; with the text evidence table only, decisions are weaker.
+- Evidence sets the ceiling: without any transcript or intact protein supporting a structure, AnnoLens does not invent one but reports unresolved and what evidence is missing.
+- Non-canonical splice sites are never adopted automatically and need manual review.
+- Output is proposals only; you decide what goes into the final annotation, and the genome and original annotation are never changed.
+- Batch review calls the model API you configure and costs money; in an agent chat the host model does the review.
 
-> **You**: Is a gene missing at chr3:1,204,000–1,212,000?
->
-> **Assistant**: Yes. IsoSeq transcript T3 encodes a complete 606 aa ORF whose length matches both protein sets, and every intron has junction reads. The candidate was built and validated. Decision: add_gene. (evidence images and candidate GFF3 attached)
+## Reference
 
-> **You**: Review the first 20 genes of the review queue and summarise.
+<details>
+<summary>The three protein roles</summary>
 
-Other typical questions:
+| role | Meaning | Use |
+|---|---|---|
+| `independent` | Another annotation of the same species, made independently | Anchors start, stop and length; main reference for truncation |
+| `related` | Proteome of a related species | Anchors start, stop and length |
+| `paralog` | Proteins from the same pipeline as the annotation under review (e.g. homeologs) | Supports introns only |
 
-- "Were these two neighbouring genes originally one?"
-- "Is this gene really two genes joined together?"
-- "Why is this gene so much shorter than its homologs?"
-- "Is this frameshift an assembly error?"
+Do not set the protein set that was used as annotation evidence as `independent`: it repeats the same truncations.
+</details>
 
-Every decision is saved as a review record (JSON). Changed and new genes are also written as GFF3. The input annotation and the genome are never modified.
+<details>
+<summary>Decisions</summary>
 
-### One-time setup
-
-Run this once on the computer you work from (Node.js required). It **registers the MCP server and installs the skill** together. The skill text is read from the annolens installed on the server, so it always matches the server's rules:
-
-```bash
-npx -y annolens-mcp install --host codex  --ssh <server> --manifest /path/on/server/annolens.toml
-npx -y annolens-mcp install --host claude --ssh <server> --manifest /path/on/server/annolens.toml
-npx -y annolens-mcp install --host cursor --ssh <server> --manifest /path/on/server/annolens.toml
-npx -y annolens-mcp install --host generic --ssh <server> --manifest /path/on/server/annolens.toml   # WorkBuddy and others: prints mcpServers JSON
-```
-
-You can also **install from the chat**: tell your agent "install AnnoLens; my data are on <server> at /path/annolens.toml", and it runs the command above.
-
-- Leave out `--ssh` when the data are on this machine; add `--dry-run` to see what would change.
-- Host configuration files are backed up as `*.annolens.bak` before they are changed.
-- To check the connection: `npx -y annolens-mcp doctor --ssh <server> --manifest ...`
-- Without Node.js, run `annolens install` on the server to do the same.
-
-### Install channels
-
-| channel | command / usage |
+| Existing gene | Meaning |
 |---|---|
-| npm (recommended) | `npx -y annolens-mcp install --host <codex\|claude\|cursor\|generic> --ssh <server> --manifest <path>` |
-| from the chat | tell your agent "install AnnoLens; my data are on <server> at <path>" |
-| skills.sh (skill only) | `npx skills add forageseed/AnnoLens`; on first use the skill guides you through connecting the MCP server |
-| Claude Code plugin | `/plugin marketplace add forageseed/AnnoLens`, then `/plugin install annolens@annolens`; set the environment variable `ANNOLENS_MANIFEST` (optionally `ANNOLENS_SSH`) |
-| Codex plugin | `.codex-plugin/` in this repository; same environment variables |
-| MCP Registry | `io.github.forageseed/annolens` (see [`server.json`](server.json)) |
+| `retain` | The current model is complete and supported |
+| `recommend_candidate` | Adopt a new structure validated by the engine |
+| `split` | The model fuses two or more genes; split into validated genes |
+| `genome_frameshift` | Reads confirm that this genome carries the frameshift or stop an independent protein needs; the model is kept and flagged |
+| `assembly_conflict` | An assembly problem (gap, misjoin, or reads disagree with the assembly) |
+| `unresolved` | Conflicting evidence |
 
-### What the skill package contains
+| Locus without a model | Meaning |
+|---|---|
+| `add_gene` | A new gene validated by the engine |
+| `no_gene` | Not a protein-coding gene (transposon, non-coding transcript or too little evidence) |
+| `genome_frameshift` | The gene is disabled in this genome |
+| `unresolved` | Cannot be decided |
+</details>
 
-An install gives the host a complete skill folder, plus sub-agents and slash commands (Claude Code plugin):
+<details>
+<summary>Design</summary>
+
+- **Structures come only from observed evidence**: the model chooses which transcript, which ATG or which projection, never coordinates.
+- **Evidence gates**: a full-chain long read; or supported introns with start, stop and length anchored by a protein projection; or the ORF most samples agree on. At least one is required.
+- **Fix only what is broken**: a complete, supported model is not replaced, except with a truncation proof. That proof needs a protein of matching length, an original under 90 % of it, and start and stop anchored by a projection or by an ORF that at least 5 samples agree on.
+- **Anti-truncation**: a candidate shorter than the dominant ORF and seen in fewer samples is refused.
+- **Traceable**: every candidate carries content, engine and input hashes; when evidence or code change, old candidates are invalid.
+</details>
+
+<details>
+<summary>Skill package, sub-agents and MCP tools</summary>
 
 ```
 skills/annolens/
@@ -152,82 +202,45 @@ skills/annolens/
   scripts/check_gff.py        deterministic checks without MCP (any GFF3 + FASTA)
 agents/annolens-curator.md    sub-agent: review one gene or locus
 agents/annolens-batch.md      sub-agent: review a queue and summarise
-commands/annolens-review.md   /annolens-review <gene>
-commands/annolens-addgene.md  /annolens-addgene <locus>
-commands/annolens-queue.md    /annolens-queue <queue> [N]
+commands/                     /annolens-review, /annolens-addgene, /annolens-queue
 ```
 
-The skill folder is generated by `annolens skill-files` from the same versioned texts the server uses; the repository copy is checked with `python scripts/build_skill.py --check`.
-
-<details>
-<summary>Tool reference (developers)</summary>
-
-| step | existing gene | locus without a model |
+| Step | Existing gene | Locus without a model |
 |---|---|---|
-| list a queue | `annolens_list_queue` | `annolens_list_queue` |
-| open | `annolens_open_gene` | `annolens_open_locus` |
-| other window | `annolens_gene_view` | `annolens_locus_view` |
-| ORFs | `annolens_gene_orfs` | `annolens_locus_orfs` |
-| build | `annolens_gene_build` | `annolens_locus_build` (transcript or projection) |
-| split (one part at a time) | `annolens_gene_split_part` | - |
-| read check | `annolens_readcheck` | `annolens_readcheck` |
-| decide | `annolens_gene_decide` | `annolens_locus_decide` |
+| List a queue | `annolens_list_queue` | `annolens_list_queue` |
+| Open | `annolens_open_gene` | `annolens_open_locus` |
+| Change window | `annolens_gene_view` | `annolens_locus_view` |
+| List ORFs | `annolens_gene_orfs` | `annolens_locus_orfs` |
+| Build a candidate | `annolens_gene_build` | `annolens_locus_build` |
+| Split (one part at a time) | `annolens_gene_split_part` | — |
+| Read check | `annolens_readcheck` | `annolens_readcheck` |
+| Decide | `annolens_gene_decide` | `annolens_locus_decide` |
 
-The server also provides:
-
-- the prompts `annolens_review_gene` and `annolens_add_gene`;
-- the resources `annolens://skill/gene` and `annolens://skill/locus`.
-
-It sets how many views, builds and read checks each session may use, and it re-validates every change or new gene before accepting it.
-
+Also prompts `annolens_review_gene`, `annolens_add_gene` and resources `annolens://skill/gene`, `annolens://skill/locus`.
 </details>
 
-## Decisions
+<details>
+<summary>Install channels and layout</summary>
 
-| existing gene | meaning |
+| Channel | Use |
 |---|---|
-| `retain` | the current model is complete and supported |
-| `recommend_candidate` | adopt a structure the engine has validated |
-| `split` | the model is a fusion; it is replaced by two or more validated genes |
-| `genome_frameshift` | reads confirm that this genome really has the frameshift or stop the independent protein needs; the model is kept and flagged |
-| `assembly_conflict` | assembly-level problem (gap, misjoin, or reads disagree with the assembly) |
-| `unresolved` | conflicting evidence |
-
-| locus without a model | meaning |
-|---|---|
-| `add_gene` | add the gene the engine has validated |
-| `no_gene` | not a protein-coding gene (transposon, non-coding transcript, insufficient evidence) |
-| `genome_frameshift` | the gene is disabled in this genome |
-| `unresolved` | cannot decide |
-
-## Design notes
-
-- **Structure only from observed evidence.** The model chooses which transcript, which ATG or which projection to use; it never writes coordinates.
-- **Evidence gates.** A change is accepted only if at least one of these holds:
-  - a full-chain long read supports it;
-  - its introns have read support and its start, stop and length are anchored by a projection;
-  - it is the dominant ORF across samples.
-- **Fix only what is broken.** A complete model that already has supporting evidence is never replaced. The one exception is when the dominant ORF and an intact independent protein both show that the model is truncated.
-- **Anti-truncation.** A candidate is never accepted if it is shorter than the dominant ORF and has fewer samples supporting it.
-- **Provenance.** Every candidate records a content hash, the engine hash and an input fingerprint. If the evidence or the code changes, the old candidate becomes invalid.
-
-## Known limitations
-
-- The host model must accept images; with the text tables alone, its judgement is weaker.
-- Rule-based UTRs require the transcript's intron chain to match the model exactly; unclear cases go to the agent.
-
-## Layout
+| In a chat | "Install or update this plugin for me: https://github.com/forageseed/AnnoLens" |
+| pip | `python -m pip install git+https://github.com/forageseed/AnnoLens.git`, then `annolens install --host <host>` |
+| npm | `npx -y annolens-mcp install --host <host>` (needs the Python package above) |
+| Claude Code plugin | `/plugin marketplace add forageseed/AnnoLens`, then `/plugin install annolens@annolens` |
+| Codex plugin | `.codex-plugin/` in the repository |
+| Skill only | `npx skills add forageseed/AnnoLens` |
 
 ```
-annolens/            Python package: config, engine, tools, addgene, readcheck, scan, prepare, session, agent, mcp_server, install, render
-annolens/skills/     versioned skill texts (existing genes gene_v3.8 with split; previous gene_v3.7 and gene_v3.5 kept; missing genes locus_v3.6)
+annolens/            Python package (engine, session, mcp_server, check, install, ...)
+annolens/skills/     versioned skill texts (gene_v3.8; v3.7 and v3.5 kept; locus_v3.6)
 examples/            example project manifest
-scripts/             release gate check_sensitive.py; skill file generator/check build_skill.py
-skills/annolens/     skill file (used by skills.sh and plugins; generated by build_skill.py)
-.claude-plugin/ .codex-plugin/ server.json   Claude Code and Codex plugin manifests, MCP Registry entry
-npm/                 npm package annolens-mcp: MCP launcher and one-step installer
+skills/ agents/ commands/   skill package, sub-agents, slash commands
+.mcp.json .claude-plugin/ .codex-plugin/ server.json npm/   host adapters
+AGENTS.md            install instructions for agents
 ```
+</details>
 
 ## Citation and license
 
-A manuscript is in preparation. License: [Apache-2.0](LICENSE).
+Paper in preparation. License: [Apache-2.0](LICENSE).

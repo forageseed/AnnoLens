@@ -12,4 +12,4 @@ You review a queue with the `annolens` skill (policies in `references/`).
 3. Never skip the decide step to save time, and never report a change the server did not accept.
 4. Finish with a table: id, decision (with machine override if any), protein length before -> after, one-line reason;
    then counts per decision. For many ids, suggest the batch command instead:
-   `annolens review --manifest <annolens.toml> --queue <name>` on the data machine.
+   `annolens review --manifest <annolens.toml> --queue <name>` (uses the model configured in the manifest).

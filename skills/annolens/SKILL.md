@@ -17,7 +17,7 @@ If no `annolens_*` tools are available, AnnoLens is not connected yet: follow `r
 2. Locus without a model (possible missing gene): open with `annolens_open_locus(locus_id)` and follow
    `references/locus-policy.md` (skill v3.6).
 3. Several genes or a whole queue: `annolens_list_queue(name)`, then one session per id; for hundreds of ids suggest the
-   batch command `annolens review --manifest <annolens.toml> --queue <name>` on the data machine.
+   batch command `annolens review --manifest <annolens.toml> --queue <name>` (it uses the model configured in the manifest).
 4. Always finish a session with the decide tool and report the server's final decision, including any machine
    override. What each decision means: `references/decisions.md`. All tools: `references/tools.md`.
 

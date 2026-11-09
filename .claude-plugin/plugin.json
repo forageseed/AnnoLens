@@ -18,10 +18,9 @@
   "skills": "./skills",
   "mcpServers": {
     "annolens": {
-      "command": "npx",
+      "command": "annolens",
       "args": [
-        "-y",
-        "annolens-mcp"
+        "mcp"
       ]
     }
   },

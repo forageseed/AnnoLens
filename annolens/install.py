@@ -1,13 +1,14 @@
-"""One-step install into an agent host: register the MCP server AND install the skill (built from the same versioned
-texts the server serves).
+"""One-step install into an agent host: register the local MCP server (`annolens mcp`) AND install the skill (built from
+the same versioned texts the server serves).
 
-  annolens install --host codex  --ssh myserver --manifest /data/proj/annolens.toml
-  annolens install --host claude --manifest ./annolens.toml          (local server, no ssh)
-  annolens install --host generic --ssh myserver --manifest ...      (prints mcpServers JSON, writes the skill folder)
-The skill is a folder: SKILL.md + references/ (policies, decisions, tools, setup) + scripts/ (stand-alone checks).
-Config files are backed up to *.annolens.bak before they are changed.
+  annolens install --host claude  [--manifest ./annolens.toml]
+  annolens install --host codex   [--manifest ./annolens.toml]
+  annolens install --host cursor  [--manifest ./annolens.toml]
+  annolens install --host generic [--manifest ./annolens.toml]    (prints mcpServers JSON, writes the skill folder)
+With --manifest the project path is stored as ANNOLENS_MANIFEST in the host config; without it the server uses
+./annolens.toml of the directory the host starts it in. Config files are backed up to *.annolens.bak first.
 """
-import json, re, shlex, shutil, subprocess, sys
+import json, re, shutil, subprocess, sys
 from pathlib import Path
 
 from . import __version__
@@ -37,7 +38,7 @@ If no `annolens_*` tools are available, AnnoLens is not connected yet: follow `r
 2. Locus without a model (possible missing gene): open with `annolens_open_locus(locus_id)` and follow
    `references/locus-policy.md` (skill v{lv}).
 3. Several genes or a whole queue: `annolens_list_queue(name)`, then one session per id; for hundreds of ids suggest the
-   batch command `annolens review --manifest <annolens.toml> --queue <name>` on the data machine.
+   batch command `annolens review --manifest <annolens.toml> --queue <name>` (it uses the model configured in the manifest).
 4. Always finish a session with the decide tool and report the server's final decision, including any machine
    override. What each decision means: `references/decisions.md`. All tools: `references/tools.md`.
 
@@ -67,8 +68,8 @@ def write_skill_dir(root, write):
 
 
 def install(a):
-    cmd = ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ServerAliveInterval=30', a.ssh, f'{a.remote_cmd} mcp --manifest {shlex.quote(a.manifest)}'] if a.ssh \
-        else [a.remote_cmd, 'mcp', '--manifest', a.manifest]
+    cmd = [shutil.which('annolens') or 'annolens', 'mcp']
+    env = {'ANNOLENS_MANIFEST': str(Path(a.manifest).expanduser().resolve())} if a.manifest else {}
 
     def write(path, text):
         path = Path(path).expanduser()
@@ -77,19 +78,30 @@ def install(a):
         if path.exists(): shutil.copy2(path, str(path) + '.annolens.bak')
         path.write_text(text, encoding='utf-8'); print('wrote', path)
 
+    entry = {'command': cmd[0], 'args': cmd[1:], **({'env': env} if env else {})}
     if a.host == 'claude':
-        reg = ['claude', 'mcp', 'add', '--scope', 'user', 'annolens', '--'] + cmd
+        reg = ['claude', 'mcp', 'add', '--scope', 'user'] + [x for k, v in env.items() for x in ('-e', f'{k}={v}')] + ['annolens', '--'] + cmd
         print(('[dry-run] ' if a.dry_run else '') + 'register: ' + ' '.join(reg))
         if not a.dry_run:
             if not shutil.which('claude'): sys.exit('claude CLI not found; register the server with the command above')
+            subprocess.run(['claude', 'mcp', 'remove', '--scope', 'user', 'annolens'], capture_output=True)
             subprocess.run(reg, check=True)
         write_skill_dir(Path(a.skills_dir or '~/.claude/skills') / 'annolens', write)
     elif a.host == 'codex':
         cfg = Path('~/.codex/config.toml').expanduser(); old = cfg.read_text(encoding='utf-8') if cfg.exists() else ''
-        old = re.sub(r'(?m)^\[mcp_servers\.annolens\]\n(?:(?!\[).*(?:\n|$))*', '', old).rstrip() + '\n'
-        write(cfg, old + f'\n[mcp_servers.annolens]\ncommand = {json.dumps(cmd[0])}\nargs = {json.dumps(cmd[1:])}\nstartup_timeout_sec = 300\ntool_timeout_sec = 900\n')
+        old = re.sub(r'(?m)^\[mcp_servers\.annolens(?:\.env)?\]\n(?:(?!\[).*(?:\n|$))*', '', old).rstrip() + '\n'
+        block = (f'\n[mcp_servers.annolens]\ncommand = {json.dumps(cmd[0])}\nargs = {json.dumps(cmd[1:])}\n'
+                 'startup_timeout_sec = 300\ntool_timeout_sec = 900\n')
+        if env: block += '\n[mcp_servers.annolens.env]\n' + ''.join(f'{k} = {json.dumps(v)}\n' for k, v in env.items())
+        write(cfg, old + block)
         write_skill_dir(Path(a.skills_dir or '~/.codex/skills') / 'annolens', write)
+    elif a.host == 'cursor':
+        cfg = Path('~/.cursor/mcp.json').expanduser(); j = json.loads(cfg.read_text(encoding='utf-8') or '{}') if cfg.exists() else {}
+        j.setdefault('mcpServers', {})['annolens'] = entry
+        write(cfg, json.dumps(j, indent=2) + '\n')
+        write_skill_dir(Path(a.skills_dir or '~/.cursor/skills') / 'annolens', write)
     else:
-        print(json.dumps({'mcpServers': {'annolens': {'command': cmd[0], 'args': cmd[1:]}}}, indent=2))
+        print(json.dumps({'mcpServers': {'annolens': entry}}, indent=2))
         write_skill_dir(Path(a.skills_dir or 'annolens-skill'), write)
-    print('done: MCP server "annolens" registered for', a.host, 'and skill installed')
+    print('done: MCP server "annolens" registered for', a.host, 'and skill installed; next: annolens check')
+    return 0

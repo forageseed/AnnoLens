@@ -22,19 +22,7 @@
       "environmentVariables": [
         {
           "name": "ANNOLENS_MANIFEST",
-          "description": "Path of the project manifest annolens.toml on the machine that holds the data",
-          "isRequired": true,
-          "isSecret": false
-        },
-        {
-          "name": "ANNOLENS_SSH",
-          "description": "ssh host of the data machine (leave empty when the data are local)",
-          "isRequired": false,
-          "isSecret": false
-        },
-        {
-          "name": "ANNOLENS_REMOTE_CMD",
-          "description": "Command that runs the annolens CLI on the data machine (default: annolens)",
+          "description": "Path of the project manifest annolens.toml (default: ./annolens.toml in the working directory)",
           "isRequired": false,
           "isSecret": false
         }
