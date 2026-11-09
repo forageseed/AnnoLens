@@ -93,17 +93,21 @@ annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 
 ### 一次性设置
 
-在你使用的电脑上运行一次。它会同时**登记 MCP 服务并装好技能**，两者来自同一份技能文本：
+在你使用的电脑上（已装 Node.js）运行一次，就能**同时登记 MCP 服务并装好技能**。技能文本从服务器上的 annolens 读取，因此总是和服务端规则一致：
 
 ```bash
-annolens install --host codex   --ssh <服务器别名> --manifest /path/on/server/annolens.toml
-annolens install --host claude  --ssh <服务器别名> --manifest /path/on/server/annolens.toml
-annolens install --host generic --ssh <服务器别名> --manifest /path/on/server/annolens.toml   # WorkBuddy、Cursor 等：打印 mcpServers JSON
+npx -y annolens-mcp install --host codex  --ssh <服务器别名> --manifest /path/on/server/annolens.toml
+npx -y annolens-mcp install --host claude --ssh <服务器别名> --manifest /path/on/server/annolens.toml
+npx -y annolens-mcp install --host cursor --ssh <服务器别名> --manifest /path/on/server/annolens.toml
+npx -y annolens-mcp install --host generic --ssh <服务器别名> --manifest /path/on/server/annolens.toml   # WorkBuddy 等：打印 mcpServers JSON
 ```
 
-- 数据就在本机时，可以省略 `--ssh`。
-- 改动宿主配置之前，会先备份为 `*.annolens.bak`。
-- Windows 上请在 PowerShell 中运行。
+也可以**直接在对话里安装**：对 agent 说“帮我安装 AnnoLens，数据在 <服务器别名> 的 /path/annolens.toml”，它会自己执行上面这条命令。
+
+- 数据在本机时可以省略 `--ssh`；加 `--dry-run` 只显示会改动什么。
+- 改动宿主配置前会先备份为 `*.annolens.bak`。
+- 检查连接：`npx -y annolens-mcp doctor --ssh <服务器别名> --manifest ...`
+- 没有 Node.js 时，可以在服务器上用 `annolens install` 完成同样的操作。
 
 <details>
 <summary>工具参考（开发者）</summary>
@@ -166,6 +170,7 @@ annolens/            Python 包：config、engine、tools、addgene、readcheck�
 annolens/skills/     版本化的技能文本（已有基因 gene_v3.7，含拆分；旧版 gene_v3.5 保留；新增基因 locus_v3.6）
 examples/            项目清单示例
 scripts/             发布前脱敏检查 check_sensitive.py
+npm/                 npm 包 annolens-mcp：MCP 启动器与一步安装器
 ```
 
 ## 引用与许可

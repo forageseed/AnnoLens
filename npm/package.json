@@ -1,0 +1,32 @@
+{
+  "name": "annolens-mcp",
+  "version": "0.1.0",
+  "mcpName": "io.github.forageseed/annolens",
+  "description": "MCP launcher and one-step installer for AnnoLens: evidence-driven gene-model curation by a vision-language agent with a versioned skill",
+  "bin": {
+    "annolens-mcp": "bin/annolens-mcp.js"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "genome-annotation",
+    "gene-model",
+    "bioinformatics",
+    "agent",
+    "codex",
+    "claude-code"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forageseed/AnnoLens.git",
+    "directory": "npm"
+  },
+  "homepage": "https://github.com/forageseed/AnnoLens#readme",
+  "license": "Apache-2.0"
+}

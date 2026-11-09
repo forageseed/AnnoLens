@@ -12,8 +12,9 @@ version that introduced each rule):
   evidence gate  one of: full-chain long read covering >= 95 % of the CDS [v3]; RNA/homology gate: every intron
                  >= 3 junction reads or reproduced by a projection, start/stop/length anchored by an independent or
                  related-species projection (0.9-1.1 x protein) [v4, 3.4]; cross-sample dominant ORF [v5]
-  fix only what is broken: a complete original that already passes a gate is not replaced [v4], except when the
-                 dominant ORF and an intact independent protein prove the original truncated [3.4]
+  fix only what is broken: a complete original that already passes a gate is not replaced [v4], except with a
+                 truncation proof: an intact independent or related protein anchors the candidate's start, stop and
+                 length, the original is < 90 % of it and every candidate intron is supported [3.7]
   anti-truncation: no candidate shorter than a strong dominant ORF with fewer sources [v5]; a dominant ORF never
                  shortens a complete original [v5]; ambiguous coverage vote -> no dominant ORF [3.3]
 The genome and the input annotation are never edited; outputs are proposals.
@@ -33,6 +34,8 @@ IND_COV, TRUNC = 0.9, 0.9
 GATE_ERRORS = {'no_exact_full_chain_longread_support', 'intron_without_RNA_or_homology_support', 'no_anchoring_projection',
                'start_not_supported_by_projection', 'stop_not_supported_by_projection', 'length_outside_projection_range',
                'single_exon_coding_support_insufficient'}
+LIFTABLE = {'original_model_already_has_full_chain_longread', 'original_model_already_passes_rna_homology_gate',
+            'merge_requires_dominant_ORF_or_full_chain_longread', 'no_exact_full_chain_longread_support'}
 ANCHOR_ERRORS = {'no_anchoring_projection', 'start_not_supported_by_projection', 'stop_not_supported_by_projection',
                  'length_outside_projection_range'}
 
@@ -338,21 +341,29 @@ class GeneEngine:
             strong = (dom is not None and dom.get('adoptable', True) and cds == dom['cds']) or bool(c['evidence'].get('full_length_chain_observed'))
             if not strong: problems.append('merge_requires_dominant_ORF_or_full_chain_longread')
             errors += sorted(set(problems))
-        # [3.4] narrow lift of the "already supported" rule when an independent protein proves truncation
-        if errors == ['original_model_already_has_full_chain_longread'] and dom is not None and dom.get('adoptable', True) and cds == dom['cds']:
-            gerr, det = self.rna_homology_gate(gene, m, G.normalize(c['new_exons']), cds)
-            orig_aa = G.aa_len(m['cds'])
-            ind = [al for al in self.homology.get(gene, []) if al['kind'] == 'ind' and al['strand'] == m['strand'] and al['frameshift'] == 0
-                   and al['stop_codon_found'] == 0 and al['protein_length'] and al['target_end_aa'] - al['target_start_aa'] + 1 >= IND_COV * al['protein_length']
-                   and orig_aa < TRUNC * al['protein_length']]
-            if not set(gerr) & ANCHOR_ERRORS and ind:
-                errors = []; gate = 'dominant_ORF_plus_independent_annotation'
-                gate_detail = {**det, 'lifted': 'original_model_already_has_full_chain_longread', 'independent_protein': ind[0]['protein'],
-                               'independent_length': ind[0]['protein_length'], 'original_aa': orig_aa}
+        # [3.7] truncation proof: the "original is already supported" and merge-strength rules are lifted only when an
+        # intact protein (independent or related, no frameshift/stop, >= 90 % coverage) anchors the candidate's start,
+        # stop and length (0.9-1.1 x), the original is < 90 % of that protein, and every candidate intron is supported.
+        if errors and set(errors) <= LIFTABLE:
+            proof = self.truncation_proof(gene, m, G.normalize(c['new_exons']), cds)
+            if proof:
+                gate_detail = {**proof, 'lifted': sorted(set(errors))}; errors = []; gate = 'truncation_proof'
         noop = c['new_cds'] == m['cds'] and c['new_exons'] == m['exons']
         return {'candidate_id': candidate_id, 'is_noop': noop, 'materializable_proposal': not errors and not noop, 'errors': errors,
                 'evidence_gate': gate, 'gate_detail': gate_detail, 'cross_tissue_support_sources': support, 'merge_with': sorted(merge),
                 'genome_unchanged': True}
+
+    def truncation_proof(self, gene, m, exons, cds):
+        gerr, det = self.rna_homology_gate(gene, m, exons, cds)
+        if gerr: return None                      # unsupported intron, or start/stop/length not anchored
+        orig_aa, aa = G.aa_len(m['cds']), G.aa_len(cds)
+        for al in self.homology.get(gene, []):
+            if al['kind'] not in ANCHOR_KINDS or al['strand'] != m['strand'] or al['frameshift'] or al['stop_codon_found'] or not al['protein_length']: continue
+            L = al['protein_length']
+            if al['target_end_aa'] - al['target_start_aa'] + 1 < IND_COV * L: continue
+            if LENGTH_RATIO[0] <= aa / L <= LENGTH_RATIO[1] and orig_aa < TRUNC * L:
+                return {**det, 'proof_protein': al['protein'], 'proof_protein_length': L, 'original_aa': orig_aa, 'candidate_aa': aa}
+        return None
 
     def materialize_proposal(self, gene, candidate_id):
         c = self.candidate(gene, candidate_id); v = self.validate_annotation_edit(gene, candidate_id)

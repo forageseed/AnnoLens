@@ -98,17 +98,21 @@ Every decision is saved as a review record (JSON). Changed and new genes are als
 
 ### One-time setup
 
-Run this once on the computer you work from. It **registers the MCP server and installs the skill** together, both built from the same skill text:
+Run this once on the computer you work from (Node.js required). It **registers the MCP server and installs the skill** together. The skill text is read from the annolens installed on the server, so it always matches the server's rules:
 
 ```bash
-annolens install --host codex   --ssh <server> --manifest /path/on/server/annolens.toml
-annolens install --host claude  --ssh <server> --manifest /path/on/server/annolens.toml
-annolens install --host generic --ssh <server> --manifest /path/on/server/annolens.toml   # WorkBuddy, Cursor, ...: prints mcpServers JSON
+npx -y annolens-mcp install --host codex  --ssh <server> --manifest /path/on/server/annolens.toml
+npx -y annolens-mcp install --host claude --ssh <server> --manifest /path/on/server/annolens.toml
+npx -y annolens-mcp install --host cursor --ssh <server> --manifest /path/on/server/annolens.toml
+npx -y annolens-mcp install --host generic --ssh <server> --manifest /path/on/server/annolens.toml   # WorkBuddy and others: prints mcpServers JSON
 ```
 
-- Leave out `--ssh` when the data are on the same machine.
+You can also **install from the chat**: tell your agent "install AnnoLens; my data are on <server> at /path/annolens.toml", and it runs the command above.
+
+- Leave out `--ssh` when the data are on this machine; add `--dry-run` to see what would change.
 - Host configuration files are backed up as `*.annolens.bak` before they are changed.
-- On Windows, run the command from PowerShell.
+- To check the connection: `npx -y annolens-mcp doctor --ssh <server> --manifest ...`
+- Without Node.js, run `annolens install` on the server to do the same.
 
 <details>
 <summary>Tool reference (developers)</summary>
@@ -174,6 +178,7 @@ annolens/            Python package: config, engine, tools, addgene, readcheck, 
 annolens/skills/     versioned skill texts (existing genes gene_v3.7 with split; previous gene_v3.5 kept; missing genes locus_v3.6)
 examples/            example project manifest
 scripts/             release gate check_sensitive.py
+npm/                 npm package annolens-mcp: MCP launcher and one-step installer
 ```
 
 ## Citation and license
