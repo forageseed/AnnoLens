@@ -22,6 +22,7 @@
 |---|---|
 | 全基因组规则初查 | `annolens scan` 逐个检查全部基因：编码完整性、UTR、基因间重叠、证据支持、与独立注释比长短、拆分与融合、读段证实的移码、重复序列重叠，并找出没有模型的位点。有问题的基因按优先级排进队列 |
 | 修复已有基因 | 截短的延长；被拆开的合并；缺起始或终止的补全；UTR 取自观测转录本 |
+| 拆分融合基因 | 一个模型其实是两个或多个基因被并在一起时，智能体逐个构建各段，每段像新基因一样单独验证；如果原模型作为一个整体本身就有支持，就不允许拆 |
 | 新增缺失基因 | 位点有转录本或完整同源投影、却没有模型时，从证据构建新基因 |
 | 读段核查 | 在任意位置统计基因组长读长（如 HiFi）和 RNA 读段是否支持组装序列，以区分组装错误和真实存在的移码或终止 |
 | 规则补 UTR | 用内含子链一致的观测转录本批量补 UTR，并检查是否与相邻基因冲突 |
@@ -84,6 +85,7 @@ annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 其他常见问法：
 
 - “这两个相邻的基因是不是本来是一个？”
+- “这个基因是不是两个基因被拼在一起了？”
 - “这个基因为什么比同源蛋白短这么多？”
 - “这个位置的移码是组装错误吗？”
 
@@ -113,6 +115,7 @@ annolens install --host generic --ssh <服务器别名> --manifest /path/on/serv
 | 换窗口 | `annolens_gene_view` | `annolens_locus_view` |
 | 列 ORF | `annolens_gene_orfs` | `annolens_locus_orfs` |
 | 构建候选 | `annolens_gene_build` | `annolens_locus_build`（转录本或同源投影） |
+| 拆分（逐段构建） | `annolens_gene_split_part` | — |
 | 读段核查 | `annolens_readcheck` | `annolens_readcheck` |
 | 下结论 | `annolens_gene_decide` | `annolens_locus_decide` |
 
@@ -131,6 +134,7 @@ annolens install --host generic --ssh <服务器别名> --manifest /path/on/serv
 |---|---|
 | `retain` | 当前模型完整，且有证据支持 |
 | `recommend_candidate` | 采用经引擎验证的新结构 |
+| `split` | 原模型是融合基因，拆成两个或多个经验证的基因 |
 | `genome_frameshift` | 独立蛋白需要的移码或终止，被读段证实确实存在于本基因组；保留原模型并做标记 |
 | `assembly_conflict` | 组装层面的问题（缺口、错接，或读段显示组装有误） |
 | `unresolved` | 证据冲突，无法判断 |
@@ -153,14 +157,13 @@ annolens install --host generic --ssh <服务器别名> --manifest /path/on/serv
 ## 已知限制
 
 - 需要宿主模型能看图；只有文字证据表时，判断能力会下降。
-- 目前还不能把一个基因拆成两个。
 - 规则补 UTR 依赖转录本内含子链与模型完全一致；拿不准的情况会交给智能体处理。
 
 ## 目录
 
 ```
 annolens/            Python 包：config、engine、tools、addgene、readcheck、scan、prepare、session、agent、mcp_server、install、render
-annolens/skills/     版本化的技能文本（已有基因 gene_v3.5、新增基因 locus_v3.6）
+annolens/skills/     版本化的技能文本（已有基因 gene_v3.7，含拆分；旧版 gene_v3.5 保留；新增基因 locus_v3.6）
 examples/            项目清单示例
 scripts/             发布前脱敏检查 check_sensitive.py
 ```

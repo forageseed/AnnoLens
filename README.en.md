@@ -27,6 +27,7 @@ Automatic annotation pipelines such as EVM, BRAKER and MAKER always leave some m
 |---|---|
 | Genome-wide rule scan | `annolens scan` checks every gene and adds the problem genes to prioritised queues. It covers:<br>• coding integrity and UTRs<br>• overlaps between genes<br>• evidence support<br>• length against an independent annotation, splits and fusions<br>• read-supported frameshifts<br>• repeat overlap<br>It also finds loci that have no gene model. |
 | Repair existing models | Extend truncated models, merge split ones, complete missing start/stop codons, take UTRs from observed transcripts |
+| Split fused models | When one model joins two or more genes, the agent builds each gene and each is validated like a new gene; a model that is supported as one gene is never split |
 | Add missing genes | Build a new gene from transcripts or an intact projection at loci that have no model |
 | Read checks | At any position, count genomic long reads (e.g. HiFi) and RNA reads that agree or disagree with the assembly, to separate assembly errors from real frameshifts and stops |
 | Rule-based UTRs | Add UTRs in bulk from transcripts whose intron chain matches the model, with conflict checks against neighbouring genes |
@@ -89,6 +90,7 @@ In any MCP host you **just talk** and ask in plain words. The host model calls A
 Other typical questions:
 
 - "Were these two neighbouring genes originally one?"
+- "Is this gene really two genes joined together?"
 - "Why is this gene so much shorter than its homologs?"
 - "Is this frameshift an assembly error?"
 
@@ -118,6 +120,7 @@ annolens install --host generic --ssh <server> --manifest /path/on/server/annole
 | other window | `annolens_gene_view` | `annolens_locus_view` |
 | ORFs | `annolens_gene_orfs` | `annolens_locus_orfs` |
 | build | `annolens_gene_build` | `annolens_locus_build` (transcript or projection) |
+| split (one part at a time) | `annolens_gene_split_part` | - |
 | read check | `annolens_readcheck` | `annolens_readcheck` |
 | decide | `annolens_gene_decide` | `annolens_locus_decide` |
 
@@ -136,6 +139,7 @@ It sets how many views, builds and read checks each session may use, and it re-v
 |---|---|
 | `retain` | the current model is complete and supported |
 | `recommend_candidate` | adopt a structure the engine has validated |
+| `split` | the model is a fusion; it is replaced by two or more validated genes |
 | `genome_frameshift` | reads confirm that this genome really has the frameshift or stop the independent protein needs; the model is kept and flagged |
 | `assembly_conflict` | assembly-level problem (gap, misjoin, or reads disagree with the assembly) |
 | `unresolved` | conflicting evidence |
@@ -161,14 +165,13 @@ It sets how many views, builds and read checks each session may use, and it re-v
 ## Known limitations
 
 - The host model must accept images; with the text tables alone, its judgement is weaker.
-- AnnoLens cannot yet split one gene into two.
 - Rule-based UTRs require the transcript's intron chain to match the model exactly; unclear cases go to the agent.
 
 ## Layout
 
 ```
 annolens/            Python package: config, engine, tools, addgene, readcheck, scan, prepare, session, agent, mcp_server, install, render
-annolens/skills/     versioned skill texts (existing genes gene_v3.5, missing genes locus_v3.6)
+annolens/skills/     versioned skill texts (existing genes gene_v3.7 with split; previous gene_v3.5 kept; missing genes locus_v3.6)
 examples/            example project manifest
 scripts/             release gate check_sensitive.py
 ```

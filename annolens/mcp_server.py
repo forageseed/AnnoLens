@@ -17,6 +17,7 @@ STATE = {'sessions': {}}
 
 MAP = {'gene': ('In this MCP session the actions are tools: open = annolens_open_gene(gene_id); view = annolens_gene_view(session,start,end); '
                 'orfs = annolens_gene_orfs(session,transcript); build = annolens_gene_build(session,transcript[,start][,merge]); '
+                'split_part = annolens_gene_split_part(session, transcript=T# | projection=H#[, start]); '
                 'readcheck = annolens_readcheck(session,position); decide = annolens_gene_decide(session,status,...). '
                 'Call the tools instead of writing JSON actions. Budgets and validation are enforced by the server.'),
        'locus': ('In this MCP session the actions are tools: open = annolens_open_locus(locus_id); view = annolens_locus_view; '
@@ -61,9 +62,10 @@ S = lambda d, opt=False: {'type': 'string', 'description': d, **({'optional': Tr
 I = lambda d, opt=False: {'type': 'integer', 'description': d, **({'optional': True} if opt else {})}
 
 
-def decide_schema(statuses):
+def decide_schema(statuses, parts=False):
+    extra = {'parts': {'type': 'array', 'items': {'type': 'string'}, 'description': 'split only: >= 2 materializable part ids from split_part', 'optional': True}} if parts else {}
     return schema(session=S('session id'), status={'type': 'string', 'enum': sorted(statuses)},
-                  candidate_id=S('candidate from a materializable build of this session', True), confidence={'type': 'number', 'description': '0..1'},
+                  candidate_id=S('candidate from a materializable build of this session', True), confidence={'type': 'number', 'description': '0..1'}, **extra,
                   rationale={'type': 'array', 'items': {'type': 'string'}},
                   evidence_gaps={'type': 'array', 'items': {'type': 'string'}, 'optional': True},
                   visual_findings={'type': 'array', 'items': {'type': 'string'}, 'optional': True})
@@ -81,8 +83,11 @@ TOOLS = [
     ('annolens_gene_build', 'Build a candidate from an observed transcript (optional ATG start; merge=true absorbs split neighbours); the engine validates it.',
      schema(session=S('session id'), transcript=S('T#'), start=I('1-based ATG', True), merge={'type': 'boolean', 'description': 'merge neighbours', 'optional': True}),
      lambda a: content(sess(a['session'], 'gene').build(a['transcript'], a.get('start'), a.get('merge', False)))),
-    ('annolens_gene_decide', 'Finish: retain | recommend_candidate | unresolved | assembly_conflict | genome_frameshift. The server re-validates and writes the review.',
-     decide_schema(GENE_STATUSES), lambda a: content(sess(a['session'], 'gene').decide(a))),
+    ('annolens_gene_split_part', 'Build ONE gene of a split (the current model joins several genes) from a transcript ORF (transcript=T#) or an intact projection (projection=H#); validated like a new gene.',
+     schema(session=S('session id'), transcript=S('T#', True), projection=S('H#', True), start=I('1-based ATG', True)),
+     lambda a: content(sess(a['session'], 'gene').split_part(a.get('transcript'), a.get('projection'), a.get('start')))),
+    ('annolens_gene_decide', 'Finish: retain | recommend_candidate | split (parts=[ids]) | unresolved | assembly_conflict | genome_frameshift. The server re-validates and writes the review.',
+     decide_schema(GENE_STATUSES, parts=True), lambda a: content(sess(a['session'], 'gene').decide(a))),
     ('annolens_open_locus', 'Open a review session for a LOCUS WITHOUT a gene model (possible missing gene).', schema(locus_id=S('locus id from the missing_loci queue')),
      lambda a: open_('locus', a['locus_id'])),
     ('annolens_locus_view', 'View another window of the locus (1-based, <= 200 kb).', schema(session=S('session id'), start=I('start'), end=I('end'), candidate=S('candidate to draw', True)),

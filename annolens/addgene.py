@@ -121,8 +121,9 @@ class LocusEngine:
         self.out = Path(cfg.get('out', '.'))
 
     # ---------- loci ----------
-    def add_locus(self, locus_id, chrom, s, e, strand):
-        self.loci[locus_id] = {'id': locus_id, 'chrom': chrom, 's': s, 'e': e, 'strand': strand}
+    def add_locus(self, locus_id, chrom, s, e, strand, ignore=()):
+        """ignore: gene ids whose CDS may be overlapped (the model being split)."""
+        self.loci[locus_id] = {'id': locus_id, 'chrom': chrom, 's': s, 'e': e, 'strand': strand, 'ignore': set(ignore)}
 
     def seq(self, chrom, blocks, strand):
         s = ''.join(self.fa.fetch(chrom, a, b).upper() for a, b in blocks)
@@ -183,6 +184,7 @@ class LocusEngine:
         if bad: errors.append('noncanonical_splice')
         hits = collections.Counter()
         for x, y, (g, gst) in self.cds.get(c, Idx([])).q(cds[0][0], cds[-1][1]):
+            if g in L.get('ignore', ()): continue
             hits[(g, gst)] += ov(cds, [(x, y)])
         clash = {f'{g}({gst})': n for (g, gst), n in hits.items() if n >= OV_BP}
         if clash: errors.append('overlaps_existing_CDS')
@@ -240,13 +242,7 @@ class LocusTools:
             trs.append({'label': inv[x['id']], 'source': ('longread:' if x['src'] == self.e.longread_name else 'rna:') + x['src'],
                         'cov': round(x['cov'], 1), 'exons': [list(e) for e in x['ex']],
                         'orf_aa': o[0]['aa'] if o else 0, 'orf_cds': o[0]['cds'] if o else []})
-        hl = self.hlabels.setdefault(locus, {}); hom = []
-        for x in sorted(self.e.projections(c, a, b, st), key=lambda x: -x['cov'] * x['identity'])[:8]:
-            if x['id'] not in hl.values(): hl[f'H{len(hl) + 1}'] = x['id']
-            k = {v: k for k, v in hl.items()}[x['id']]
-            hom.append({'label': k, 'kind': KIND_LABEL.get(x['kind'].split(':')[0], x['kind']),
-                        'protein': x['protein'], 'protein_aa': x['protein_aa'], 'identity': x['identity'], 'coverage': round(x['cov'], 3),
-                        'frameshift': x['frameshift'], 'stop_codons': x['stop'], 'blocks': [list(y) for y in x['cds']]})
+        hom = self.projection_rows(locus, a, b)
         others = {f'{g}({gst})': sorted(v) for (g, gst), v in self.e.models(c, a, b).items()}
         cand = None
         if candidate:
@@ -257,13 +253,27 @@ class LocusTools:
                 'junctions': [j for j in self.e.junctions(c, a, b, st) if j[2] >= MIN_JUNC], 'homology': hom,
                 'dominant_orf': None, 'candidate': cand}
 
+    def projection_rows(self, locus, a, b, top=8):
+        """All protein projections in [a, b) on the locus strand, best first, with stable labels H1..Hn."""
+        L = self.e.loci[locus]; hl = self.hlabels.setdefault(locus, {}); hom = []
+        for x in sorted(self.e.projections(L['chrom'], a, b, L['strand']), key=lambda x: -x['cov'] * x['identity'])[:top]:
+            if x['id'] not in hl.values(): hl[f'H{len(hl) + 1}'] = x['id']
+            k = {v: k for k, v in hl.items()}[x['id']]
+            hom.append({'label': k, 'kind': KIND_LABEL.get(x['kind'].split(':')[0], x['kind']),
+                        'protein': x['protein'], 'protein_aa': x['protein_aa'], 'identity': x['identity'], 'coverage': round(x['cov'], 3),
+                        'frameshift': x['frameshift'], 'stop_codons': x['stop'], 'blocks': [list(y) for y in x['cds']]})
+        return hom
+
+    @staticmethod
+    def projection_table(hom):
+        return [{'id': x['label'], 'kind': x['kind'], 'protein_aa': x['protein_aa'], 'identity': x['identity'], 'coverage': x['coverage'],
+                 'frameshift': x['frameshift'], 'stop_codons': x['stop_codons'],
+                 'span_1based': [x['blocks'][0][0] + 1, x['blocks'][-1][1]], 'cds_exons': len(x['blocks'])} for x in hom]
+
     def tables(self, data):
         t = [{'id': x['label'], 'source': x['source'], 'cov': x['cov'], 'span_1based': [x['exons'][0][0] + 1, x['exons'][-1][1]],
               'exons': len(x['exons']), 'longest_ORF_aa': x['orf_aa']} for x in data['transcripts']]
-        h = [{'id': x['label'], 'kind': x['kind'], 'protein_aa': x['protein_aa'], 'identity': x['identity'], 'coverage': x['coverage'],
-              'frameshift': x['frameshift'], 'stop_codons': x['stop_codons'],
-              'span_1based': [x['blocks'][0][0] + 1, x['blocks'][-1][1]], 'cds_exons': len(x['blocks'])} for x in data['homology']]
-        return t, h
+        return t, self.projection_table(data['homology'])
 
     def orf_options(self, locus, label, top=6):
         L = self.e.loci[locus]; x = self.e.tx[self.labels[locus][label]]
@@ -281,6 +291,17 @@ class LocusTools:
         if not os_: raise ValueError('transcript has no complete ORF >= 50 aa')
         # exons: transcript exons (UTRs included) clipped so that they contain the chosen CDS
         return self.e.build(locus, x['ex'], os_[0]['cds'], {'kind': 'transcript', 'label': label, 'transcript': x['id']})
+
+    def build_from_tx(self, locus, txid, label, start_1based=None):
+        """Build from a transcript identified by 'source:transcript_id' (labels assigned elsewhere, e.g. in gene mode)."""
+        L = self.e.loci[locus]
+        if txid not in self.e.tx: raise ValueError(f'unknown transcript {label}')
+        x = self.e.tx[txid]; os_ = self.e.orfs(L['chrom'], x['ex'], L['strand'])
+        if start_1based:
+            os_ = [o for o in os_ if ((o['cds'][0][0] + 1) if L['strand'] == '+' else o['cds'][-1][1]) == int(start_1based)]
+            if not os_: raise ValueError('no complete ORF starts at that position; use orfs to list them')
+        if not os_: raise ValueError('transcript has no complete ORF >= 50 aa')
+        return self.e.build(locus, x['ex'], os_[0]['cds'], {'kind': 'transcript', 'label': label, 'transcript': txid})
 
     def build_from_projection(self, locus, label):
         L = self.e.loci[locus]

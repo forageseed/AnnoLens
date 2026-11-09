@@ -32,6 +32,7 @@ budgets and re-validates every change before it is written. It never edits the g
 | look further | `annolens_gene_view(session,start,end)` | `annolens_locus_view(session,start,end)` |
 | ORFs | `annolens_gene_orfs(session,transcript)` | `annolens_locus_orfs(session,transcript)` |
 | build | `annolens_gene_build(session,transcript[,start][,merge])` | `annolens_locus_build(session,transcript=T# or projection=H#)` |
+| split into genes | `annolens_gene_split_part(session,transcript=T# or projection=H#)` per gene, then decide status=split | - |
 | read check | `annolens_readcheck(session,position)` | `annolens_readcheck(session,position)` |
 | finish | `annolens_gene_decide(session,status,...)` | `annolens_locus_decide(session,status,...)` |
 

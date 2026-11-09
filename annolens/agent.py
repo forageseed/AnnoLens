@@ -104,6 +104,7 @@ def review(key):
             if a == 'view': res = s.view(act['start'], act['end'])
             elif a == 'orfs': res = s.orfs(act['transcript'])
             elif a == 'readcheck': res = s.readcheck(act['position'], act.get('kind', 'any'))
+            elif a == 'split_part' and mode == 'gene': res = s.split_part(act.get('transcript'), act.get('projection'), act.get('start'))
             elif a == 'build':
                 res = s.build(act['transcript'], act.get('start'), act.get('merge', False)) if mode == 'gene' else \
                     s.build(act.get('transcript'), act.get('projection'), act.get('start'))
