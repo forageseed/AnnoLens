@@ -32,7 +32,7 @@ Automatic annotation pipelines such as EVM, BRAKER and MAKER always leave some m
 | Read checks | At any position, count genomic long reads (e.g. HiFi) and RNA reads that agree or disagree with the assembly, to separate assembly errors from real frameshifts and stops |
 | Rule-based UTRs | Add UTRs in bulk from transcripts whose intron chain matches the model, with conflict checks against neighbouring genes |
 | Batch review | Review thousands of genes in parallel with any vision model behind an OpenAI- or Anthropic-compatible API |
-| MCP server | Works with Codex, Claude Code, WorkBuddy, Cursor and any other MCP host |
+| Conversational use | Ask in plain words inside Codex, Claude Code, WorkBuddy, Cursor or any MCP host |
 
 ## Install
 
@@ -73,23 +73,44 @@ Results go to `<work_dir>/reviews/`: one review record (JSON) per gene. Validate
 
 Do not mark a proteome that was used as evidence for the reviewed annotation as `independent`: it repeats the same truncations.
 
-## Use from Codex, Claude Code, WorkBuddy and other hosts (MCP)
+## Use it in conversation (Codex, Claude Code, WorkBuddy, ...)
 
-One command **registers the MCP server and installs the skill** together. Both come from the same skill text, so they cannot drift apart:
+In any MCP host you **just talk** and ask in plain words. The host model calls AnnoLens on its own: it looks at the evidence, builds candidates and checks reads, then answers with a decision and the evidence images. You do not need to know any commands or tool names.
+
+> **You**: Is this gene model right? gene_123
+>
+> **Assistant**: The current model is 199 aa and only covers the 3′ part of the gene. Transcripts from 7 samples and the independent protein support a 646 aa structure, but the end of exon 1 carries a 1-bp frameshift. 26 HiFi reads and 170 RNA reads confirm that this is the real sequence of this genome. Decision: genome_frameshift; the model is kept and flagged. (evidence images attached)
+
+> **You**: Is a gene missing at chr3:1,204,000–1,212,000?
+>
+> **Assistant**: Yes. IsoSeq transcript T3 encodes a complete 606 aa ORF whose length matches both protein sets, and every intron has junction reads. The candidate was built and validated. Decision: add_gene. (evidence images and candidate GFF3 attached)
+
+> **You**: Review the first 20 genes of the review queue and summarise.
+
+Other typical questions:
+
+- "Were these two neighbouring genes originally one?"
+- "Why is this gene so much shorter than its homologs?"
+- "Is this frameshift an assembly error?"
+
+Every decision is saved as a review record (JSON). Changed and new genes are also written as GFF3. The input annotation and the genome are never modified.
+
+### One-time setup
+
+Run this once on the computer you work from. It **registers the MCP server and installs the skill** together, both built from the same skill text:
 
 ```bash
 annolens install --host codex   --ssh <server> --manifest /path/on/server/annolens.toml
 annolens install --host claude  --ssh <server> --manifest /path/on/server/annolens.toml
-annolens install --host generic --ssh <server> --manifest /path/on/server/annolens.toml   # prints mcpServers JSON
+annolens install --host generic --ssh <server> --manifest /path/on/server/annolens.toml   # WorkBuddy, Cursor, ...: prints mcpServers JSON
 ```
 
-Leave out `--ssh` when the data are on the same machine. Host configuration files are backed up as `*.annolens.bak` before they are changed. On Windows, run the command from PowerShell.
+- Leave out `--ssh` when the data are on the same machine.
+- Host configuration files are backed up as `*.annolens.bak` before they are changed.
+- On Windows, run the command from PowerShell.
 
-Then just ask, for example:
-
-- "Is this gene model right? <gene_id>"
-- "Is a gene missing at <chrom>:<start>-<end>?"
-- "Review the first 20 genes of queue P1."
+<details>
+<summary>Tool reference (developers)</summary>
 
 | step | existing gene | locus without a model |
 |---|---|---|
@@ -101,7 +122,14 @@ Then just ask, for example:
 | read check | `annolens_readcheck` | `annolens_readcheck` |
 | decide | `annolens_gene_decide` | `annolens_locus_decide` |
 
-The server also provides two prompts, `annolens_review_gene` and `annolens_add_gene`, and two resources, `annolens://skill/gene` and `annolens://skill/locus`. It sets how many views, builds and read checks each session may use, and it re-validates every change or new gene before accepting it.
+The server also provides:
+
+- the prompts `annolens_review_gene` and `annolens_add_gene`;
+- the resources `annolens://skill/gene` and `annolens://skill/locus`.
+
+It sets how many views, builds and read checks each session may use, and it re-validates every change or new gene before accepting it.
+
+</details>
 
 ## Decisions
 

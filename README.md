@@ -27,7 +27,7 @@
 | 读段核查 | 在任意位置统计基因组长读长（如 HiFi）和 RNA 读段是否支持组装序列，以区分组装错误和真实存在的移码或终止 |
 | 规则补 UTR | 用内含子链一致的观测转录本批量补 UTR，并检查是否与相邻基因冲突 |
 | 批量审查 | 并行审几千到几万个基因；可接任何兼容 OpenAI 或 Anthropic 接口、能看图的模型 |
-| MCP 服务 | 供 Codex、Claude Code、WorkBuddy、Cursor 等支持 MCP 的宿主调用 |
+| 对话使用 | 在 Codex、Claude Code、WorkBuddy、Cursor 等支持 MCP 的宿主里直接用自然语言提问 |
 
 ## 安装
 
@@ -68,23 +68,44 @@ annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 
 不要把“当初用作注释证据的蛋白组”设为 `independent`：它会重复注释里同样的截短。
 
-## 在 Codex、Claude Code、WorkBuddy 等宿主中使用（MCP）
+## 在对话中使用（Codex、Claude Code、WorkBuddy 等）
 
-一条命令就能同时**登记 MCP 服务并安装技能**，两者来自同一份技能文本，不会对不上：
+在支持 MCP 的宿主里，AnnoLens 就是**直接对话**：用平常的话提问，宿主模型自己调用 AnnoLens 去看证据、构建候选、核查读段，最后给出结论，并附上证据图。不用记任何命令或工具名。
+
+> **你**：这个基因模型对吗？gene_123
+>
+> **助手**：当前模型 199 aa，只覆盖了基因 3′ 端。7 个样本的转录本和独立注释的蛋白都支持 646 aa 的结构，但第 1 外显子末端有 1 个碱基的移码，HiFi 26 条、RNA 170 条读段都证实这是本基因组的真实序列。结论：本基因组移码（genome_frameshift），保留原模型并做标记。（附证据图）
+
+> **你**：chr3:1,204,000–1,212,000 这里是不是漏注释了一个基因？
+>
+> **助手**：有。IsoSeq 转录本 T3 编码一个 606 aa 的完整 ORF，与两套同源蛋白长度一致，所有内含子都有剪接读段支持。已构建并通过验证，结论：新增基因（add_gene）。（附证据图和候选 GFF3）
+
+> **你**：把待审队列里的前 20 个基因审一遍，最后汇总一下。
+
+其他常见问法：
+
+- “这两个相邻的基因是不是本来是一个？”
+- “这个基因为什么比同源蛋白短这么多？”
+- “这个位置的移码是组装错误吗？”
+
+每个结论都写成审阅记录（JSON）；修改和新增的基因同时输出 GFF3。原注释和基因组都不会被改动。
+
+### 一次性设置
+
+在你使用的电脑上运行一次。它会同时**登记 MCP 服务并装好技能**，两者来自同一份技能文本：
 
 ```bash
-annolens install --host codex  --ssh <服务器别名> --manifest /path/on/server/annolens.toml
-annolens install --host claude --ssh <服务器别名> --manifest /path/on/server/annolens.toml
-annolens install --host generic --ssh <服务器别名> --manifest /path/on/server/annolens.toml   # 打印 mcpServers JSON
+annolens install --host codex   --ssh <服务器别名> --manifest /path/on/server/annolens.toml
+annolens install --host claude  --ssh <服务器别名> --manifest /path/on/server/annolens.toml
+annolens install --host generic --ssh <服务器别名> --manifest /path/on/server/annolens.toml   # WorkBuddy、Cursor 等：打印 mcpServers JSON
 ```
 
-数据在本机时可以省略 `--ssh`。改动宿主配置之前，安装器会先备份为 `*.annolens.bak`。Windows 用户请在 PowerShell 中运行。
+- 数据就在本机时，可以省略 `--ssh`。
+- 改动宿主配置之前，会先备份为 `*.annolens.bak`。
+- Windows 上请在 PowerShell 中运行。
 
-装好后直接用自然语言提问即可：
-
-- “帮我看看这个基因模型对不对：<gene_id>”
-- “这个位置是不是漏注释了一个基因？<chrom>:<start>-<end>”
-- “把 P1 队列的前 20 个基因审一遍”
+<details>
+<summary>工具参考（开发者）</summary>
 
 | 步骤 | 已有基因 | 无模型位点 |
 |---|---|---|
@@ -92,11 +113,18 @@ annolens install --host generic --ssh <服务器别名> --manifest /path/on/serv
 | 打开 | `annolens_open_gene` | `annolens_open_locus` |
 | 换窗口 | `annolens_gene_view` | `annolens_locus_view` |
 | 列 ORF | `annolens_gene_orfs` | `annolens_locus_orfs` |
-| 构建候选 | `annolens_gene_build` | `annolens_locus_build`（用转录本或同源投影） |
+| 构建候选 | `annolens_gene_build` | `annolens_locus_build`（转录本或同源投影） |
 | 读段核查 | `annolens_readcheck` | `annolens_readcheck` |
 | 下结论 | `annolens_gene_decide` | `annolens_locus_decide` |
 
-另外提供两个提示词 `annolens_review_gene`、`annolens_add_gene`，以及资源 `annolens://skill/gene`、`annolens://skill/locus`。每个会话能查看、构建、核查读段几次，由服务端限定；判为修改或新增之前，服务端会再验证一遍。
+此外还提供：
+
+- 提示词 `annolens_review_gene`、`annolens_add_gene`；
+- 资源 `annolens://skill/gene`、`annolens://skill/locus`。
+
+每个会话的查看、构建、读段核查次数由服务端限定；判为修改或新增时，服务端会再验证一遍。
+
+</details>
 
 ## 结论类型
 
