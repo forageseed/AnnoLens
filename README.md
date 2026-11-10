@@ -117,6 +117,10 @@ annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 
 ## 与人工审阅对比
 
+![AnnoLens 框架、逐位点结果与汇总](docs/figure-overview.webp)
+
+上图：a 为 AnnoLens 框架（代理提议、引擎逐项验证，审阅循环每次处理一个基因或位点）；b 为 20 个位点与独立注释的一致性；c 为汇总。
+
 同一套基因组上选 20 个位点，覆盖截短、延伸、合并、拆分、缩短、非经典剪接、基因组移码、漏注释和对照共 9 类问题。AnnoLens（技能 v3.8，GLM 模型）自动审阅；GSAman 由 Agent 操作其图形界面逐个修改，操作时看不到 AnnoLens 的结果（不是资深人工审阅员，熟练的人可能更快）。参照为同物种另一套独立注释（不是绝对真值）。
 
 | 指标 | AnnoLens | GSAman |
@@ -124,7 +128,9 @@ annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 | 与独立注释的 CDS 碱基重合（Jaccard，均值；原注释 0.538） | **0.735** | 0.641 |
 | 更接近独立注释的位点数（其余 10 个持平） | **8** | 2 |
 | 合计用时 | **15.0 分钟** | 57.3 分钟 |
-| 每个位点用时（中位数） | **26 秒** | 180 秒 |
+| 每个位点用时（中位数） | **25 秒** | 177 秒 |
+| BUSCO 完整度，embryophyta（原注释 98.8%） | **99.6%** | — |
+| BUSCO 完整度，fabales（原注释 98.8%） | **99.3%** | — |
 
 分类型看：
 - 截短的延长、相邻基因合并、新增基因，两者大多给出完全相同的模型。

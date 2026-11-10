@@ -117,6 +117,10 @@ annolens addgene --manifest annolens.toml --queue missing_high --workers 4
 
 ## Compared with manual curation
 
+![AnnoLens framework, per-locus results and summary](docs/figure-overview.webp)
+
+Figure: (a) the AnnoLens framework, where the agent proposes and the engine verifies each change, one gene or locus per loop; (b) per-locus agreement with the independent annotation for 20 loci; (c) summary.
+
 Twenty loci from one genome, covering nine kinds of problem: truncation, extension, merge, split, shortening, non-canonical splicing, genome frameshift, missing gene and controls. AnnoLens (skill v3.8, GLM model) reviewed them automatically. GSAman was operated through its GUI by an agent that could not see the AnnoLens results; this is not an experienced human curator, who may be faster. The reference is an independent annotation of the same species, not ground truth.
 
 | Measure | AnnoLens | GSAman |
@@ -124,7 +128,9 @@ Twenty loci from one genome, covering nine kinds of problem: truncation, extensi
 | CDS base overlap with the independent annotation (Jaccard, mean; original 0.538) | **0.735** | 0.641 |
 | Loci closer to the independent annotation (10 tied) | **8** | 2 |
 | Total time | **15.0 min** | 57.3 min |
-| Time per locus (median) | **26 s** | 180 s |
+| Time per locus (median) | **25 s** | 177 s |
+| BUSCO completeness, embryophyta (original 98.8%) | **99.6%** | — |
+| BUSCO completeness, fabales (original 98.8%) | **99.3%** | — |
 
 By problem type:
 - Extending truncated models, merging neighbours and adding genes mostly gave identical models.
